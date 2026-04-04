@@ -8,10 +8,24 @@
 namespace format {
 
 template <typename Token>
-class TokenPartitionTree {
+class TokenPartitionTree
+    : public std::enable_shared_from_this<TokenPartitionTree<Token>> {
  public:
-  auto addChild(UnwrappedLine<Token> /*line*/) -> TokenPartitionTree* {
-    throw std::runtime_error("TODO");
+  static auto makeRoot() -> std::shared_ptr<TokenPartitionTree> {
+    return std::shared_ptr<TokenPartitionTree>(new TokenPartitionTree());
+  }
+
+  auto addChild(UnwrappedLine<Token> line, std::vector<Token> storage = {})
+      -> TokenPartitionTree* {
+    auto child = std::shared_ptr<TokenPartitionTree>(new TokenPartitionTree());
+    child->token_storage_ = std::move(storage);
+    child->value = std::move(line);
+    if (!child->token_storage_.empty()) {
+      child->value.tokens = std::span(child->token_storage_);
+    }
+    child->parent_ = this->shared_from_this();
+    children_.push_back(child);
+    return child.get();
   }
 
   void mergeWithPreviousSibling() { throw std::runtime_error("TODO"); }
@@ -57,7 +71,19 @@ class TokenPartitionTree {
     throw std::runtime_error("TODO");
   }
 
+  [[nodiscard]] auto unwrappedLine() noexcept -> UnwrappedLine<Token>& {
+    return value;
+  }
+
+  [[nodiscard]] auto unwrappedLine() const noexcept
+      -> const UnwrappedLine<Token>& {
+    return value;
+  }
+
  private:
+  TokenPartitionTree() = default;
+  std::vector<Token> token_storage_;
+
   std::weak_ptr<TokenPartitionTree> parent_;
   std::vector<std::shared_ptr<TokenPartitionTree>> children_;
   UnwrappedLine<Token> value;
