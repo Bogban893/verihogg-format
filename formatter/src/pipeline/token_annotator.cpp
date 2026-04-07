@@ -3,6 +3,8 @@
 #include <slang/parsing/Token.h>
 #include <slang/syntax/SyntaxTree.h>
 
+#include <cstddef>
+
 #include "data/format_token.h"
 #include "data/token_partition_tree.h"
 
