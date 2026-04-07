@@ -4,6 +4,7 @@
 #include <slang/parsing/Token.h>
 
 #include "data/format_style.h"
+#include "data/format_token.h"
 #include "data/token_partition_tree.h"
 
 namespace format {
@@ -14,8 +15,7 @@ class TreeUnwrapper {
                 const FormatStyle& style)
       : syntax_tree(syntax_tree), style(style) {};
 
-  [[nodiscard]] auto unwrap() const
-      -> TokenPartitionTree<slang::parsing::Token>;
+  [[nodiscard]] auto unwrap() const -> TokenPartitionTree<FormatToken>;
 
  private:
   std::reference_wrapper<const slang::syntax::SyntaxTree> syntax_tree;

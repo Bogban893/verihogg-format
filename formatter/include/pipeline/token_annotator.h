@@ -12,9 +12,7 @@ class TokenAnnotator {
  public:
   explicit TokenAnnotator(const FormatStyle& style) : style(style) {};
 
-  [[nodiscard]] auto annotate(
-      const TokenPartitionTree<slang::parsing::Token>& tree) const
-      -> TokenPartitionTree<FormatToken>;
+  auto annotate(TokenPartitionTree<FormatToken>& tree) const -> void;
 
  private:
   std::reference_wrapper<const FormatStyle> style;
