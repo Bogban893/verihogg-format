@@ -3,15 +3,21 @@
 #include <slang/parsing/Token.h>
 #include <slang/syntax/SyntaxTree.h>
 
-#include <ranges>
-#include <stack>
-
 #include "data/format_token.h"
 #include "data/token_partition_tree.h"
 
 namespace format {
 
 namespace {
+
+namespace {
+
+struct BreakPenalty {
+  static constexpr size_t kSoft = 10;
+  static constexpr size_t kHard = 200;
+};
+
+}  // namespace
 
 auto computeGroupBalancing(slang::parsing::TokenKind k) -> GroupBalancing {
   using TK = slang::parsing::TokenKind;
@@ -34,43 +40,6 @@ auto computeGroupBalancing(slang::parsing::TokenKind k) -> GroupBalancing {
       return GroupBalancing::kNone;
   }
 }
-// Копирование всего дерева очень странная идея, нужно подумать
-auto copyStructure(const TokenPartitionTree<slang::parsing::Token>& src,
-                   TokenPartitionTree<FormatToken>& dst) -> void {
-  using Frame = std::pair<const TokenPartitionTree<slang::parsing::Token>*,
-                          TokenPartitionTree<FormatToken>*>;
-  std::stack<Frame> stack;
-  stack.emplace(&src,
-                &dst);  // stack.emplace(&src, &dst) создаёт Frame{&src, &dst}.
-
-  while (!stack.empty()) {
-    auto [srcNode, dstNode] = stack.top();
-    stack.pop();
-
-    const auto& children = srcNode->children();
-    for (const auto& srcChild : std::ranges::reverse_view(children)) {
-      const auto& srcLine = srcChild->unwrappedLine();
-
-      std::vector<FormatToken> fmtTokens;
-      for (const auto& tk : srcLine.tokens) {
-        fmtTokens.push_back(FormatToken{
-            .token = tk,
-            .balancing = computeGroupBalancing(tk.kind),
-        });
-      }
-
-      auto uwl = UnwrappedLine<FormatToken>{
-          .tokens = {},
-          .indentation_spaces = srcLine.indentation_spaces,
-          .partition_policy = srcLine.partition_policy,
-      };
-      auto* dstChild = dstNode->addChild(uwl, std::move(fmtTokens));
-      stack.emplace(srcChild.get(), dstChild);
-    }
-  }
-}
-
-// ── computeInterTokenInfo
 
 auto computeInterTokenInfo(const slang::parsing::Token* prev,
                            const slang::parsing::Token& cur) -> InterTokenInfo {
@@ -115,50 +84,45 @@ auto computeInterTokenInfo(const slang::parsing::Token* prev,
   // После ; начало следующего оператора
   if (pk == TK::Semicolon) {
     return {.spaces_required = 0,
-            .break_penalty = 200,
+            .break_penalty = BreakPenalty::kHard,
             .break_decision = BreakDecision::kMustBreak};
   }
 
   // begin or fork открывают блок
   if (pk == TK::BeginKeyword || pk == TK::ForkKeyword) {
     return {.spaces_required = 0,
-            .break_penalty = 200,
+            .break_penalty = BreakPenalty::kHard,
             .break_decision = BreakDecision::kMustBreak};
   }
 
   // end or join закрывают блок - перед ними тоже перенос
   if (ck == TK::EndKeyword || ck == TK::JoinKeyword) {
     return {.spaces_required = 0,
-            .break_penalty = 200,
+            .break_penalty = BreakPenalty::kHard,
             .break_decision = BreakDecision::kMustBreak};
   }
 
   // Один пробел, перенос разрешён (база)
   return {.spaces_required = 1,
-          .break_penalty = 10,
+          .break_penalty = BreakPenalty::kSoft,
           .break_decision = BreakDecision::kUndecided};
 }
 
 }  // namespace
 
-[[nodiscard]] auto TokenAnnotator::annotate(
-    const TokenPartitionTree<slang::parsing::Token>& tree) const
-    -> TokenPartitionTree<FormatToken> {
-  auto result = TokenPartitionTree<FormatToken>::makeRoot();
-  copyStructure(tree, *result);
-
+auto TokenAnnotator::annotate(TokenPartitionTree<FormatToken>& tree) const
+    -> void {
   const slang::parsing::Token* prevToken = nullptr;
-  result->visitPreOrder([&](TokenPartitionTree<FormatToken>& node) {
+  tree.visitPreOrder([&](TokenPartitionTree<FormatToken>& node) -> void {
     if (!node.isLeaf()) {
       return;
     }
     for (auto& ft : node.unwrappedLine().tokens) {
+      ft.balancing = computeGroupBalancing(ft.token.kind);
       ft.before = computeInterTokenInfo(prevToken, ft.token);
       prevToken = &ft.token;
     }
   });
-
-  return std::move(*result);
 }
 
 }  // namespace format

@@ -13,10 +13,10 @@
 namespace format {
 auto format(std::string_view source_text, FormatStyle style) -> FormatResult {
   auto slangTree = slang::syntax::SyntaxTree::fromText(source_text);
-  auto tokenTree = TreeUnwrapper(*slangTree, style).unwrap();
-  auto annotatedTree = TokenAnnotator(style).annotate(tokenTree);
-  joinLines(annotatedTree, style);
-  align(annotatedTree, style);
-  return {.formatted_text = annotatedTree.toString()};
+  auto tree = TreeUnwrapper(*slangTree, style).unwrap();  // TPT<FormatToken>
+  TokenAnnotator(style).annotate(tree);
+  joinLines(tree, style);
+  align(tree, style);
+  return {.formatted_text = tree.toString()};
 }
 }  // namespace format
