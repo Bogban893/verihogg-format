@@ -1,7 +1,6 @@
 #include "pipeline/token_annotator.h"
 
 #include <slang/parsing/Token.h>
-#include <slang/syntax/SyntaxTree.h>
 
 #include <cstddef>
 
