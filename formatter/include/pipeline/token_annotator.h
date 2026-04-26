@@ -14,9 +14,7 @@ class TokenAnnotator {
  public:
   explicit TokenAnnotator(const FormatStyle& style) : style(style) {};
 
-  [[nodiscard]] auto annotate(
-      const std::vector<UnwrappedLine<const slang::parsing::Token>>& lines)
-      -> std::vector<UnwrappedLine<FormatToken>>;
+  auto annotate(std::vector<UnwrappedLine<FormatToken>>& lines) -> void;
 
  private:
   // Запускает три последовательных прохода для одной логической строки.
