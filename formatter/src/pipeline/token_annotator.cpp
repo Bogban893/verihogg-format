@@ -1,7 +1,10 @@
 #include "pipeline/token_annotator.h"
 
 #include <slang/parsing/Token.h>
+#include <slang/parsing/TokenKind.h>
 
+#include <cstddef>
+#include <span>
 #include <stack>
 #include <vector>
 
@@ -379,7 +382,7 @@ auto TokenAnnotator::annotateUnwrappedLine(
     buf.push_back(*node.token);
   }
 
-  std::span<FormatToken> span{buf};
+  const std::span<FormatToken> span{buf};
   matchBrackets(span);
   determineTokenTypes(span);
   computeInterTokenInfo(span);

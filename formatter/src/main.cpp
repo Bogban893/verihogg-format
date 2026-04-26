@@ -1,7 +1,11 @@
 #include <slang/driver/Driver.h>
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 
 #include "cli/format_args.h"
 #include "data/lex_context.h"
@@ -25,7 +29,7 @@ auto main(int argc, char** argv) -> int {
     slang::driver::Driver driver;
     driver.addStandardArgs();
 
-    format::FormatArgsBinder binder(driver);
+    const format::FormatArgsBinder binder(driver);
 
     if (!driver.parseCommandLine(argc, argv)) {
       return 1;

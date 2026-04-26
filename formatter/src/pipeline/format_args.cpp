@@ -1,5 +1,9 @@
 #include "cli/format_args.h"
 
+#include <slang/driver/Driver.h>
+
+#include <utility>
+
 #include "data/format_style.h"
 
 namespace format {
