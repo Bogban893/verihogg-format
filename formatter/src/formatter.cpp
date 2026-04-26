@@ -9,13 +9,12 @@
 #include "pipeline/tree_unwrapper.h"
 
 namespace format {
-auto format(const slang::syntax::SyntaxTree& sTree, FormatStyle style)
+auto format(std::span<const slang::parsing::Token> tokens, FormatStyle style)
     -> FormatResult {
-  // auto slangTree = slang::syntax::SyntaxTree::fromText(source_text);
-  auto tree = TreeUnwrapper(sTree, style).unwrap();  // TPT<FormatToken>
-  TokenAnnotator(style).annotate(tree);
-  joinLines(tree, style);
-  align(tree, style);
-  return {.formatted_text = tree.toString()};
+  auto lines = TreeUnwrapper(tokens, style).unwrap();
+  TokenAnnotator(style).annotate(lines);
+  joinLines(lines, style);
+  align(lines, style);
+  return {.formatted_text = "TODO"};
 }
 }  // namespace format

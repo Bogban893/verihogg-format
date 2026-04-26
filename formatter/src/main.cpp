@@ -1,10 +1,10 @@
 #include <slang/driver/Driver.h>
-#include <slang/syntax/SyntaxTree.h>
 
 #include <fstream>
 #include <iostream>
 
 #include "cli/format_args.h"
+#include "data/lex_context.h"
 #include "formatter.h"
 
 namespace {
@@ -26,23 +26,35 @@ auto main(int argc, char** argv) -> int {
     driver.addStandardArgs();
 
     format::FormatArgsBinder binder(driver);
-    auto [style, run] = binder.buildStyle();
 
-    if (!driver.parseCommandLine(argc, argv) || !driver.parseAllSources() ||
-        driver.syntaxTrees.empty()) {
+    if (!driver.parseCommandLine(argc, argv)) {
       return 1;
     }
 
-    // Форматируем все файлы
-    for (const auto& tree : driver.syntaxTrees) {
-      const auto& sm = tree->sourceManager();
-      slang::SourceLocation loc = tree->root().sourceRange().start();
-      std::string_view filePath = sm.getFileName(loc);
+    auto [style, run] = binder.buildStyle();
 
-      auto result = format::format(*tree, style);
+    const auto& files = driver.sourceLoader.getFilePaths();
 
-      if (filePath != "<stdin>" && run.inplace) {
-        writeFile(filePath, result.formatted_text);
+    if (files.empty()) {
+      LexContext ctx;
+      auto tokens = ctx.lex_file("<stdin>");
+      auto result = format::format(tokens, style);
+      std::cout << result.formatted_text;
+      return 0;
+    }
+
+    for (const auto& path : files) {
+      LexContext ctx;
+      auto tokens = ctx.lex_file(path.string());
+      if (tokens.empty()) {
+        std::cerr << "Warning: no tokens in " << path << "\n";
+        continue;
+      }
+
+      auto result = format::format(tokens, style);
+
+      if (run.inplace) {
+        writeFile(path, result.formatted_text);
       } else {
         std::cout << result.formatted_text;
       }
