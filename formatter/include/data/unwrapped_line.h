@@ -28,7 +28,7 @@ struct UnwrappedLineNode {
 template <typename Token>
 struct UnwrappedLine {
   std::span<UnwrappedLineNode<Token>> tokens;
-
+  
   IndentLevel indentation_spaces;
   // todo
 };
