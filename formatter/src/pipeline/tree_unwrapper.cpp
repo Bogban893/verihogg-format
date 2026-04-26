@@ -1,14 +1,14 @@
 #include "pipeline/tree_unwrapper.h"
 
-#include <slang/parsing/Token.h>
-
 #include <stdexcept>
+#include <vector>
 
-#include "data/token_partition_tree.h"
+#include "data/format_token.h"
+#include "data/unwrapped_line.h"
 
 namespace format {
 [[nodiscard]] auto TreeUnwrapper::unwrap() const
-    -> TokenPartitionTree<slang::parsing::Token> {
+    -> std::vector<UnwrappedLine<FormatToken>> {
   throw std::runtime_error("TODO");
 }
 }  // namespace format

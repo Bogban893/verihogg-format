@@ -1,8 +1,8 @@
 #include "formatter.h"
 
-#include <slang/syntax/SyntaxTree.h>
+#include <slang/parsing/Token.h>
 
-#include <string_view>
+#include <span>
 
 #include "data/format_style.h"
 #include "pipeline/line_joiner.h"
@@ -11,12 +11,12 @@
 #include "pipeline/tree_unwrapper.h"
 
 namespace format {
-auto format(std::string_view source_text, FormatStyle style) -> FormatResult {
-  auto slangTree = slang::syntax::SyntaxTree::fromText(source_text);
-  auto tokenTree = TreeUnwrapper(*slangTree, style).unwrap();
-  auto annotatedTree = TokenAnnotator(style).annotate(tokenTree);
-  joinLines(annotatedTree, style);
-  align(annotatedTree, style);
-  return {.formatted_text = annotatedTree.toString()};
+auto format(std::span<const slang::parsing::Token> tokens, FormatStyle style)
+    -> FormatResult {
+  auto lines = TreeUnwrapper(tokens, style).unwrap();
+  TokenAnnotator(style).annotate(lines);
+  joinLines(lines, style);
+  align(lines, style);
+  return {.formatted_text = "TODO"};
 }
 }  // namespace format

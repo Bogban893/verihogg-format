@@ -4,21 +4,21 @@
 #include <slang/parsing/Token.h>
 
 #include "data/format_style.h"
-#include "data/token_partition_tree.h"
+#include "data/format_token.h"
+#include "data/unwrapped_line.h"
 
 namespace format {
 
 class TreeUnwrapper {
  public:
-  TreeUnwrapper(const slang::syntax::SyntaxTree& syntax_tree,
+  TreeUnwrapper(std::span<const slang::parsing::Token> tokens,
                 const FormatStyle& style)
-      : syntax_tree(syntax_tree), style(style) {};
+      : tokens(tokens), style(style) {}
 
-  [[nodiscard]] auto unwrap() const
-      -> TokenPartitionTree<slang::parsing::Token>;
+  [[nodiscard]] auto unwrap() const -> std::vector<UnwrappedLine<FormatToken>>;
 
  private:
-  std::reference_wrapper<const slang::syntax::SyntaxTree> syntax_tree;
+  std::span<const slang::parsing::Token> tokens;
   std::reference_wrapper<const FormatStyle> style;
 };
 }  // namespace format

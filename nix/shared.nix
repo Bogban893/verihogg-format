@@ -2,6 +2,7 @@
 {
   buildInputs = with pkgs; [
     sv-lang
+    gtest
   ] ++ sv-lang.buildInputs;
 
   nativeBuildInputs = with pkgs; [
