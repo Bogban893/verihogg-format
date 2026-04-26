@@ -1,5 +1,6 @@
 #include <slang/driver/Driver.h>
 
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
