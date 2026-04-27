@@ -1,29 +1,13 @@
 #include <slang/driver/Driver.h>
 
 #include <exception>
-#include <filesystem>
-#include <fstream>
 #include <iostream>
-#include <stdexcept>
-#include <string>
 #include <string_view>
 
 #include "cli/format_args.h"
 #include "data/lex_context.h"
 #include "formatter.h"
-
-namespace {
-
-auto writeFile(const std::filesystem::path& path, std::string_view content)
-    -> void {
-  std::ofstream f{std::string{path}, std::ios::binary | std::ios::trunc};
-  if (!f) {
-    throw std::runtime_error("Cannot open: " + std::string{path});
-  }
-  f << content;
-}
-
-}  // namespace
+#include "pipeline/runner.h"
 
 auto main(int argc, char** argv) -> int {
   try {
@@ -47,23 +31,7 @@ auto main(int argc, char** argv) -> int {
       std::cout << result.formatted_text;
       return 0;
     }
-
-    for (const auto& path : files) {
-      LexContext ctx;
-      auto tokens = ctx.lex_file(path.string());
-      if (tokens.empty()) {
-        std::cerr << "Warning: no tokens in " << path << "\n";
-        continue;
-      }
-
-      auto result = format::format(tokens, style);
-
-      if (run.inplace) {
-        writeFile(path, result.formatted_text);
-      } else {
-        std::cout << result.formatted_text;
-      }
-    }
+    runFormatter(files, style, run, {.out = &std::cout, .err = &std::cerr});
 
     return 0;
   } catch (const std::exception& e) {
