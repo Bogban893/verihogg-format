@@ -27,3 +27,20 @@ auto LexContext::lex_file(std::string_view path)
   }
   return tokens;
 }
+
+auto LexContext::lex_string(std::string_view src)
+    -> std::vector<slang::parsing::Token> {
+  std::vector<slang::parsing::Token> tokens;
+
+  auto buffer = source_manager_.assignText(src);
+  slang::parsing::Lexer lexer(buffer, alloc_, diagnostics_, source_manager_);
+
+  while (true) {
+    auto tok = lexer.lex();
+    if (tok.kind == slang::parsing::TokenKind::EndOfFile) {
+      break;
+    }
+    tokens.push_back(tok);
+  }
+  return tokens;
+}

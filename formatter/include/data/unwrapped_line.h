@@ -34,4 +34,7 @@ struct UnwrappedLine {
   // todo
 };
 
+auto printUnwrappedLine(UnwrappedLine<slang::parsing::Token>& line,
+                        size_t depth) -> void;
+
 }  // namespace format
