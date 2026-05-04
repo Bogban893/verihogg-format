@@ -8,15 +8,14 @@ namespace format {
 static constexpr size_t kMinColumnGap = 4;
 static constexpr size_t kMinGroupSize = 2;
 
-[[nodiscard]] auto static range_width(
-    const std::vector<UnwrappedLineNode<FormatToken>>& tokens, size_t start,
-    size_t end) -> size_t {
+[[nodiscard]] auto static range_width(const std::vector<FormatToken>& tokens,
+                                      size_t start, size_t end) -> size_t {
   size_t width = 0;
   for (size_t i = start; i < end; ++i) {
     if (i != start) {
-      width += tokens[i].token.before.spaces_required;
+      width += tokens[i].before.spaces_required;
     }
-    width += tokens[i].token.token.rawText().size();
+    width += tokens[i].token.rawText().size();
   }
   return width;
 }
@@ -53,12 +52,11 @@ static constexpr size_t kMinGroupSize = 2;
 
   size_t i = 1;
   while (i < tokens.size()) {
-    const FormatToken& ft = tokens[i].token;
-
+    const FormatToken& ft = tokens[i];
     if (ft.balancing == GroupBalancing::kOpen) {
       if (ft.matching_bracket != nullptr) {
         size_t j = i + 1;
-        while (j < tokens.size() && &tokens[j].token != ft.matching_bracket) {
+        while (j < tokens.size() && &tokens[j] != ft.matching_bracket) {
           ++j;
         }
         i = j + 1;
@@ -66,10 +64,10 @@ static constexpr size_t kMinGroupSize = 2;
         int depth = 1;
         ++i;
         while (i < tokens.size() && depth > 0) {
-          if (tokens[i].token.balancing == GroupBalancing::kOpen) {
+          if (tokens[i].balancing == GroupBalancing::kOpen) {
             ++depth;
           }
-          if (tokens[i].token.balancing == GroupBalancing::kClose) {
+          if (tokens[i].balancing == GroupBalancing::kClose) {
             --depth;
           }
           ++i;
@@ -89,7 +87,7 @@ static constexpr size_t kMinGroupSize = 2;
 }
 
 static void apply_group(AlignmentGroup& group,
-                        std::vector<UnwrappedLine<FormatToken>>& children) {
+                        std::vector<UnwrappedLine<FormatToken>>& lines) {
   if (group.line_indices.size() < kMinGroupSize) {
     return;
   }
@@ -102,7 +100,7 @@ static void apply_group(AlignmentGroup& group,
 
   for (size_t row_i = 0; row_i < group.line_indices.size(); ++row_i) {
     const size_t line_i = group.line_indices[row_i];
-    auto& line = children[line_i];
+    auto& line = lines[line_i];
     auto& tokens = line.tokens;
     const AlignmentRow& row = group.table[row_i];
 
@@ -119,8 +117,8 @@ static void apply_group(AlignmentGroup& group,
       const size_t target = column_offset[c];
       const size_t spaces = (target > cursor) ? (target - cursor) : 1;
 
-      FormatToken& first = tokens[cell.start_idx].token;
-      first.decision.spaces_before = spaces;
+      FormatToken& first = tokens[cell.start_idx];
+      first.before.spaces_required = spaces;
 
       cursor = target + cell.width;
     }
@@ -128,33 +126,26 @@ static void apply_group(AlignmentGroup& group,
   }
 }
 
-static void process_children(
-    std::vector<UnwrappedLine<FormatToken>>& children) {
+static void process_lines(std::vector<UnwrappedLine<FormatToken>>& lines) {
   AlignmentGroup current_group;
 
   auto flush = [&]() {
-    apply_group(current_group, children);
+    apply_group(current_group, lines);
     current_group = AlignmentGroup{};
   };
 
-  for (size_t i = 0; i < children.size(); ++i) {
-    auto& child = children[i];
+  for (size_t i = 0; i < lines.size(); ++i) {
+    auto& line = lines[i];
 
-    for (auto& node : child.tokens) {
-      if (!node.children.empty()) {
-        process_children(node.children);
-      }
-    }
-
-    if (child.partition_policy != PartitionPolicy::kTabularAlignment) {
+    if (line.partition_policy != PartitionPolicy::kTabularAlignment) {
       continue;
     }
 
-    if (child.tokens.empty()) {
+    if (line.tokens.empty()) {
       continue;
     }
 
-    AlignmentRow row = build_row(child);
+    AlignmentRow row = build_row(line);
     if (row.empty()) {
       continue;
     }
@@ -184,7 +175,7 @@ static void process_children(
 
 void align(std::vector<UnwrappedLine<FormatToken>>& lines,
            const FormatStyle& /*style*/) {
-  process_children(lines);
+  process_lines(lines);
 }
 
 }  // namespace format
