@@ -1,29 +1,44 @@
+#include <slang/driver/Driver.h>
+
 #include <cassert>
-#include <cstddef>
-#include <gsl/span>
-#include <gsl/span_ext>
+#include <exception>
 #include <iostream>
 
-#include "data/format_style.h"
+#include "cli/format_args.h"
 #include "data/lex_context.h"
-#include "data/unwrapped_line.h"
-#include "pipeline/tree_unwrapper.h"
+#include "formatter.h"
+#include "pipeline/runner.h"
 
-auto main(int argc, const char** argv) -> int {
-  assert(argc >= 0);
-  const auto args = gsl::span{argv, static_cast<size_t>(argc)};
-  if (argc < 2) {
+auto main(int argc, char** argv) -> int {
+  try {
+    slang::driver::Driver driver;
+    driver.addStandardArgs();
+
+    format::FormatArgsBinder binder(driver);
+
+    if (!driver.parseCommandLine(argc, argv)) {
+      return 1;
+    }
+
+    auto [style, run] = binder.buildStyle();
+
+    const auto& files = driver.sourceLoader.getFilePaths();
+
+    if (run.inplace && files.empty()) {
+      std::cerr << "Warning: --inplace has no effect when reading from stdin\n";
+    }
+
+    if (files.empty()) {
+      LexContext ctx;
+      auto tokens = ctx.lex_file("<stdin>");
+      auto result = format::format(tokens, style);
+      std::cout << result.formatted_text;
+      return 0;
+    }
+    runFormatter(files, style, run, {.out = &std::cout, .err = &std::cerr});
+    return 0;
+  } catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << "\n";
     return 1;
   }
-
-  LexContext ctx;
-  auto tokens = ctx.lex_file(gsl::at(args, 1));
-  format::FormatStyle style = {
-      .column_limit = 2,
-      .indentation_spaces = 2,
-  };
-  format::TreeUnwrapper unwrapper(tokens, style);
-  auto unwrapped_lines = unwrapper.unwrap();
-  format::printUnwrappedLines(unwrapped_lines);
-  return 0;
 }
