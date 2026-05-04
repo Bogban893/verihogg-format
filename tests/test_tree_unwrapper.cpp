@@ -3,6 +3,7 @@
 #include <slang/parsing/TokenKind.h>
 
 #include <cstddef>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -34,52 +35,27 @@ struct TokSnap {
   auto operator==(const TokSnap&) const -> bool = default;
 };
 
-struct LineSnap;
-
-// NOLINTBEGIN(misc-no-recursion)
-struct NodeSnap {
-  TokSnap tok;
-  std::vector<LineSnap> children;
-  auto operator==(const NodeSnap&) const -> bool = default;
-};
-
 struct LineSnap {
-  std::vector<NodeSnap> nodes;
+  std::vector<TokSnap> tokens;
   size_t indent = 0;
   PP policy = PP::kAlwaysExpand;
   auto operator==(const LineSnap&) const -> bool = default;
 };
-// NOLINTEND(misc-no-recursion)
 // NOLINTEND(misc-non-private-member-variables-in-classes)
 
-// Converters from real tree to snapshot.
+// Converters from real lines to snapshots.
 
 auto snap(const slang::parsing::Token& t) -> TokSnap {
   return {.kind = t.kind, .text = std::string(t.rawText())};
 }
 
-auto snap(const format::UnwrappedLineNode<slang::parsing::Token>& n)
-    -> NodeSnap;
-auto snap(const Line& l) -> LineSnap;
-
-// NOLINTBEGIN(misc-no-recursion)
-auto snap(const format::UnwrappedLineNode<slang::parsing::Token>& n)
-    -> NodeSnap {
-  NodeSnap s{.tok = snap(n.token)};
-  for (const auto& child : n.children) {
-    s.children.push_back(snap(child));
-  }
-  return s;
-}
-
 auto snap(const Line& l) -> LineSnap {
   LineSnap s{.indent = l.indentation_spaces, .policy = l.partition_policy};
-  for (const auto& n : l.tokens) {
-    s.nodes.push_back(snap(n));
+  for (const auto& token : l.tokens) {
+    s.tokens.push_back(snap(token));
   }
   return s;
 }
-// NOLINTEND(misc-no-recursion)
 
 auto snap(const std::vector<Line>& lines) -> std::vector<LineSnap> {
   std::vector<LineSnap> result;
@@ -92,14 +68,37 @@ auto snap(const std::vector<Line>& lines) -> std::vector<LineSnap> {
 
 // Builders for constructing expected snapshots by hand.
 
-auto N(TK kind, std::string_view text, std::vector<LineSnap> children = {})
-    -> NodeSnap {
-  return {.tok = {.kind = kind, .text = std::string(text)},
-          .children = std::move(children)};
+auto N(TK kind, std::string_view text) -> TokSnap {
+  return {.kind = kind, .text = std::string(text)};
 }
 
-auto L(size_t indent, PP policy, std::vector<NodeSnap> nodes) -> LineSnap {
-  return {.nodes = std::move(nodes), .indent = indent, .policy = policy};
+auto L(size_t indent, PP policy, std::vector<TokSnap> tokens) -> LineSnap {
+  return {.tokens = std::move(tokens), .indent = indent, .policy = policy};
+}
+
+auto policyName(PP policy) -> std::string_view {
+  switch (policy) {
+    case PP::kAlwaysExpand:
+      return "AlwaysExpand";
+    case PP::kFitOnLineElseExpand:
+      return "FitOnLineElseExpand";
+    case PP::kTabularAlignment:
+      return "TabularAlignment";
+    case PP::kAlreadyFormatted:
+      return "AlreadyFormatted";
+  }
+  return "Unknown";
+}
+
+void PrintTo(const TokSnap& tok, std::ostream* os) {
+  *os << slang::parsing::toString(tok.kind) << "(" << tok.text << ")";
+}
+
+void PrintTo(const LineSnap& line, std::ostream* os) {
+  *os << "{indent=" << line.indent << ", policy="
+      << policyName(line.policy) << ", tokens=";
+  ::testing::internal::UniversalPrint(line.tokens, os);
+  *os << "}";
 }
 
 // ---------------------------------------------------------------------------
@@ -136,6 +135,9 @@ TEST_F(TreeUnwrapperTest, ModuleHeaderWithoutPorts) {
             N(TK::ModuleKeyword, "module"),
             N(TK::Identifier, "foo"),
             N(TK::OpenParenthesis, "("),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
             N(TK::CloseParenthesis, ")"),
             N(TK::Semicolon, ";"),
         }),
@@ -148,7 +150,7 @@ TEST_F(TreeUnwrapperTest, ModuleHeaderWithoutPorts) {
   EXPECT_EQ(snap(lines), expected);
 }
 
-TEST_F(TreeUnwrapperTest, ThreePortsBecomeThreeChildren) {
+TEST_F(TreeUnwrapperTest, ThreePortsBecomeThreeLines) {
   auto lines = parse(
       "module counter (input logic clk, input logic rst_n, output logic [3:0] "
       "count);"
@@ -159,39 +161,229 @@ TEST_F(TreeUnwrapperTest, ThreePortsBecomeThreeChildren) {
         {
             N(TK::ModuleKeyword, "module"),
             N(TK::Identifier, "counter"),
-            N(TK::OpenParenthesis, "(",
-              {
-                  // port 0: input logic clk ,
-                  L(kIndent, PP::kTabularAlignment,
-                    {
-                        N(TK::InputKeyword, "input"),
-                        N(TK::LogicKeyword, "logic"),
-                        N(TK::Identifier, "clk"),
-                        N(TK::Comma, ","),
-                    }),
-                  // port 1: input logic rst_n ,
-                  L(kIndent, PP::kTabularAlignment,
-                    {
-                        N(TK::InputKeyword, "input"),
-                        N(TK::LogicKeyword, "logic"),
-                        N(TK::Identifier, "rst_n"),
-                        N(TK::Comma, ","),
-                    }),
-                  // port 2: output logic [3:0] count  — no trailing comma
-                  L(kIndent, PP::kTabularAlignment,
-                    {
-                        N(TK::OutputKeyword, "output"),
-                        N(TK::LogicKeyword, "logic"),
-                        N(TK::OpenBracket, "["),
-                        N(TK::IntegerLiteral, "3"),
-                        N(TK::Colon, ":"),
-                        N(TK::IntegerLiteral, "0"),
-                        N(TK::CloseBracket, "]"),
-                        N(TK::Identifier, "count"),
-                    }),
-              }),
+            N(TK::OpenParenthesis, "("),
+        }),
+      // port 0: input logic clk ,
+      L(0, PP::kTabularAlignment,
+        {
+            N(TK::InputKeyword, "input"),
+            N(TK::LogicKeyword, "logic"),
+            N(TK::Identifier, "clk"),
+            N(TK::Comma, ","),
+        }),
+      // port 1: input logic rst_n ,
+      L(0, PP::kTabularAlignment,
+        {
+            N(TK::InputKeyword, "input"),
+            N(TK::LogicKeyword, "logic"),
+            N(TK::Identifier, "rst_n"),
+            N(TK::Comma, ","),
+        }),
+      // port 2: output logic [3:0] count  — no trailing comma
+      L(0, PP::kTabularAlignment,
+        {
+            N(TK::OutputKeyword, "output"),
+            N(TK::LogicKeyword, "logic"),
+            N(TK::OpenBracket, "["),
+            N(TK::IntegerLiteral, "3"),
+            N(TK::Colon, ":"),
+            N(TK::IntegerLiteral, "0"),
+            N(TK::CloseBracket, "]"),
+            N(TK::Identifier, "count"),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
             N(TK::CloseParenthesis, ")"),
             N(TK::Semicolon, ";"),
+        }),
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::EndModuleKeyword, "endmodule"),
+        }),
+  };
+
+  EXPECT_EQ(snap(lines), expected);
+}
+
+TEST_F(TreeUnwrapperTest, MprfConditionalPortsKeepDirectivesAsLines) {
+  auto lines = parse(
+      "`include \"scr1_arch_description.svh\"\n"
+      "module scr1_pipe_mprf (\n"
+      "`ifdef SCR1_MPRF_RST_EN\n"
+      "input logic rst_n,\n"
+      "`endif\n"
+      "input logic clk\n"
+      ");"
+      "endmodule : scr1_pipe_mprf");
+
+  const std::vector<LineSnap> expected = {
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`include"),
+            N(TK::StringLiteral, "\"scr1_arch_description.svh\""),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::ModuleKeyword, "module"),
+            N(TK::Identifier, "scr1_pipe_mprf"),
+            N(TK::OpenParenthesis, "("),
+        }),
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`ifdef"),
+            N(TK::Identifier, "SCR1_MPRF_RST_EN"),
+        }),
+      L(0, PP::kTabularAlignment,
+        {
+            N(TK::InputKeyword, "input"),
+            N(TK::LogicKeyword, "logic"),
+            N(TK::Identifier, "rst_n"),
+            N(TK::Comma, ","),
+        }),
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`endif"),
+        }),
+      L(0, PP::kTabularAlignment,
+        {
+            N(TK::InputKeyword, "input"),
+            N(TK::LogicKeyword, "logic"),
+            N(TK::Identifier, "clk"),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::CloseParenthesis, ")"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::EndModuleKeyword, "endmodule"),
+            N(TK::Colon, ":"),
+            N(TK::Identifier, "scr1_pipe_mprf"),
+        }),
+  };
+
+  EXPECT_EQ(snap(lines), expected);
+}
+
+TEST_F(TreeUnwrapperTest, PortListKeepsUnknownBacktickAsMacroUsage) {
+  auto lines = parse(
+      "module m (`SCR1_PORT(input logic a, b), input logic c); endmodule");
+
+  const std::vector<LineSnap> expected = {
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::ModuleKeyword, "module"),
+            N(TK::Identifier, "m"),
+            N(TK::OpenParenthesis, "("),
+        }),
+      L(0, PP::kTabularAlignment,
+        {
+            N(TK::Directive, "`SCR1_PORT"),
+            N(TK::OpenParenthesis, "("),
+            N(TK::InputKeyword, "input"),
+            N(TK::LogicKeyword, "logic"),
+            N(TK::Identifier, "a"),
+            N(TK::Comma, ","),
+            N(TK::Identifier, "b"),
+            N(TK::CloseParenthesis, ")"),
+            N(TK::Comma, ","),
+        }),
+      L(0, PP::kTabularAlignment,
+        {
+            N(TK::InputKeyword, "input"),
+            N(TK::LogicKeyword, "logic"),
+            N(TK::Identifier, "c"),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::CloseParenthesis, ")"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::EndModuleKeyword, "endmodule"),
+        }),
+  };
+
+  EXPECT_EQ(snap(lines), expected);
+}
+
+TEST_F(TreeUnwrapperTest, MprfRamAttributeDeclarationsStayFlat) {
+  auto lines = parse(
+      "module m ();\n"
+      "`ifdef SCR1_TRGT_FPGA_INTEL_MAX10\n"
+      "(* ramstyle = \"M9K\" *) logic [`SCR1_XLEN-1:0] mprf_int "
+      "[1:`SCR1_MPRF_SIZE-1];\n"
+      "`else\n"
+      "type_scr1_mprf_v [1:`SCR1_MPRF_SIZE-1] mprf_int;\n"
+      "`endif\n"
+      "endmodule");
+
+  const std::vector<LineSnap> expected = {
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::ModuleKeyword, "module"),
+            N(TK::Identifier, "m"),
+            N(TK::OpenParenthesis, "("),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::CloseParenthesis, ")"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`ifdef"),
+            N(TK::Identifier, "SCR1_TRGT_FPGA_INTEL_MAX10"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::OpenParenthesis, "("),
+            N(TK::Star, "*"),
+            N(TK::Identifier, "ramstyle"),
+            N(TK::Equals, "="),
+            N(TK::StringLiteral, "\"M9K\""),
+            N(TK::Star, "*"),
+            N(TK::CloseParenthesis, ")"),
+            N(TK::LogicKeyword, "logic"),
+            N(TK::OpenBracket, "["),
+            N(TK::Directive, "`SCR1_XLEN"),
+            N(TK::Minus, "-"),
+            N(TK::IntegerLiteral, "1"),
+            N(TK::Colon, ":"),
+            N(TK::IntegerLiteral, "0"),
+            N(TK::CloseBracket, "]"),
+            N(TK::Identifier, "mprf_int"),
+            N(TK::OpenBracket, "["),
+            N(TK::IntegerLiteral, "1"),
+            N(TK::Colon, ":"),
+            N(TK::Directive, "`SCR1_MPRF_SIZE"),
+            N(TK::Minus, "-"),
+            N(TK::IntegerLiteral, "1"),
+            N(TK::CloseBracket, "]"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`else"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Identifier, "type_scr1_mprf_v"),
+            N(TK::OpenBracket, "["),
+            N(TK::IntegerLiteral, "1"),
+            N(TK::Colon, ":"),
+            N(TK::Directive, "`SCR1_MPRF_SIZE"),
+            N(TK::Minus, "-"),
+            N(TK::IntegerLiteral, "1"),
+            N(TK::CloseBracket, "]"),
+            N(TK::Identifier, "mprf_int"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`endif"),
         }),
       L(0, PP::kAlwaysExpand,
         {
@@ -215,6 +407,9 @@ TEST_F(TreeUnwrapperTest, AlwaysFFIsOwnLine) {
             N(TK::ModuleKeyword, "module"),
             N(TK::Identifier, "m"),
             N(TK::OpenParenthesis, "("),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
             N(TK::CloseParenthesis, ")"),
             N(TK::Semicolon, ";"),
         }),
@@ -248,6 +443,211 @@ TEST_F(TreeUnwrapperTest, AlwaysFFIsOwnLine) {
   EXPECT_EQ(snap(lines), expected);
 }
 
+TEST_F(TreeUnwrapperTest, MprfResetAlwaysFFWithAggregateLiteral) {
+  auto lines = parse(
+      "module m ();\n"
+      "`ifdef SCR1_MPRF_RST_EN\n"
+      "always_ff @(posedge clk, negedge rst_n) begin "
+      "if (~rst_n) begin "
+      "mprf_int <= '{default: '0}; "
+      "end else if (wr_req_vd) begin "
+      "mprf_int[exu2mprf_rd_addr_i] <= exu2mprf_rd_data_i; "
+      "end "
+      "end\n"
+      "`endif\n"
+      "endmodule");
+
+  const std::vector<LineSnap> expected = {
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::ModuleKeyword, "module"),
+            N(TK::Identifier, "m"),
+            N(TK::OpenParenthesis, "("),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::CloseParenthesis, ")"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`ifdef"),
+            N(TK::Identifier, "SCR1_MPRF_RST_EN"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::AlwaysFFKeyword, "always_ff"),
+            N(TK::At, "@"),
+            N(TK::OpenParenthesis, "("),
+            N(TK::PosEdgeKeyword, "posedge"),
+            N(TK::Identifier, "clk"),
+            N(TK::Comma, ","),
+            N(TK::NegEdgeKeyword, "negedge"),
+            N(TK::Identifier, "rst_n"),
+            N(TK::CloseParenthesis, ")"),
+        }),
+      L(kIndent * 2, PP::kAlwaysExpand,
+        {
+            N(TK::BeginKeyword, "begin"),
+        }),
+      L(kIndent * 3, PP::kAlwaysExpand,
+        {
+            N(TK::IfKeyword, "if"),
+            N(TK::OpenParenthesis, "("),
+            N(TK::Tilde, "~"),
+            N(TK::Identifier, "rst_n"),
+            N(TK::CloseParenthesis, ")"),
+        }),
+      L(kIndent * 4, PP::kAlwaysExpand,
+        {
+            N(TK::BeginKeyword, "begin"),
+        }),
+      L(kIndent * 5, PP::kAlwaysExpand,
+        {
+            N(TK::Identifier, "mprf_int"),
+            N(TK::LessThanEquals, "<="),
+            N(TK::ApostropheOpenBrace, "'{"),
+            N(TK::DefaultKeyword, "default"),
+            N(TK::Colon, ":"),
+            N(TK::UnbasedUnsizedLiteral, "'0"),
+            N(TK::CloseBrace, "}"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(kIndent * 4, PP::kAlwaysExpand,
+        {
+            N(TK::EndKeyword, "end"),
+        }),
+      L(kIndent * 3, PP::kAlwaysExpand,
+        {
+            N(TK::ElseKeyword, "else"),
+            N(TK::IfKeyword, "if"),
+            N(TK::OpenParenthesis, "("),
+            N(TK::Identifier, "wr_req_vd"),
+            N(TK::CloseParenthesis, ")"),
+        }),
+      L(kIndent * 4, PP::kAlwaysExpand,
+        {
+            N(TK::BeginKeyword, "begin"),
+        }),
+      L(kIndent * 5, PP::kAlwaysExpand,
+        {
+            N(TK::Identifier, "mprf_int"),
+            N(TK::OpenBracket, "["),
+            N(TK::Identifier, "exu2mprf_rd_addr_i"),
+            N(TK::CloseBracket, "]"),
+            N(TK::LessThanEquals, "<="),
+            N(TK::Identifier, "exu2mprf_rd_data_i"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(kIndent * 4, PP::kAlwaysExpand,
+        {
+            N(TK::EndKeyword, "end"),
+        }),
+      L(kIndent * 2, PP::kAlwaysExpand,
+        {
+            N(TK::EndKeyword, "end"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`endif"),
+        }),
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::EndModuleKeyword, "endmodule"),
+        }),
+  };
+
+  EXPECT_EQ(snap(lines), expected);
+}
+
+TEST_F(TreeUnwrapperTest, MprfSimulationAssertionStaysSingleStatementLine) {
+  auto lines = parse(
+      "module m ();\n"
+      "`ifdef SCR1_TRGT_SIMULATION\n"
+      "SCR1_SVA_MPRF_WRITEX : assert property ("
+      "@(negedge clk) disable iff (~rst_n) "
+      "exu2mprf_w_req_i |-> !$isunknown({exu2mprf_rd_addr_i, "
+      "(|exu2mprf_rd_addr_i ? exu2mprf_rd_data_i : `SCR1_XLEN'd0)})"
+      ") else $error(\"MPRF error: unknown values\");\n"
+      "`endif\n"
+      "endmodule");
+
+  const std::vector<LineSnap> expected = {
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::ModuleKeyword, "module"),
+            N(TK::Identifier, "m"),
+            N(TK::OpenParenthesis, "("),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::CloseParenthesis, ")"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`ifdef"),
+            N(TK::Identifier, "SCR1_TRGT_SIMULATION"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Identifier, "SCR1_SVA_MPRF_WRITEX"),
+            N(TK::Colon, ":"),
+            N(TK::AssertKeyword, "assert"),
+            N(TK::PropertyKeyword, "property"),
+            N(TK::OpenParenthesis, "("),
+            N(TK::At, "@"),
+            N(TK::OpenParenthesis, "("),
+            N(TK::NegEdgeKeyword, "negedge"),
+            N(TK::Identifier, "clk"),
+            N(TK::CloseParenthesis, ")"),
+            N(TK::DisableKeyword, "disable"),
+            N(TK::IffKeyword, "iff"),
+            N(TK::OpenParenthesis, "("),
+            N(TK::Tilde, "~"),
+            N(TK::Identifier, "rst_n"),
+            N(TK::CloseParenthesis, ")"),
+            N(TK::Identifier, "exu2mprf_w_req_i"),
+            N(TK::OrMinusArrow, "|->"),
+            N(TK::Exclamation, "!"),
+            N(TK::SystemIdentifier, "$isunknown"),
+            N(TK::OpenParenthesis, "("),
+            N(TK::OpenBrace, "{"),
+            N(TK::Identifier, "exu2mprf_rd_addr_i"),
+            N(TK::Comma, ","),
+            N(TK::OpenParenthesis, "("),
+            N(TK::Or, "|"),
+            N(TK::Identifier, "exu2mprf_rd_addr_i"),
+            N(TK::Question, "?"),
+            N(TK::Identifier, "exu2mprf_rd_data_i"),
+            N(TK::Colon, ":"),
+            N(TK::Directive, "`SCR1_XLEN"),
+            N(TK::IntegerBase, "'d"),
+            N(TK::IntegerLiteral, "0"),
+            N(TK::CloseParenthesis, ")"),
+            N(TK::CloseBrace, "}"),
+            N(TK::CloseParenthesis, ")"),
+            N(TK::CloseParenthesis, ")"),
+            N(TK::ElseKeyword, "else"),
+            N(TK::SystemIdentifier, "$error"),
+            N(TK::OpenParenthesis, "("),
+            N(TK::StringLiteral, "\"MPRF error: unknown values\""),
+            N(TK::CloseParenthesis, ")"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Directive, "`endif"),
+        }),
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::EndModuleKeyword, "endmodule"),
+        }),
+  };
+
+  EXPECT_EQ(snap(lines), expected);
+}
+
 // ---- begin/end --------------------------------------------------------------
 
 TEST_F(TreeUnwrapperTest, BeginEndAreOwnLines) {
@@ -259,6 +659,9 @@ TEST_F(TreeUnwrapperTest, BeginEndAreOwnLines) {
             N(TK::ModuleKeyword, "module"),
             N(TK::Identifier, "m"),
             N(TK::OpenParenthesis, "("),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
             N(TK::CloseParenthesis, ")"),
             N(TK::Semicolon, ";"),
         }),
@@ -296,6 +699,9 @@ TEST_F(TreeUnwrapperTest, IfIsOwnLine) {
             N(TK::ModuleKeyword, "module"),
             N(TK::Identifier, "m"),
             N(TK::OpenParenthesis, "("),
+        }),
+      L(0, PP::kFitOnLineElseExpand,
+        {
             N(TK::CloseParenthesis, ")"),
             N(TK::Semicolon, ";"),
         }),
