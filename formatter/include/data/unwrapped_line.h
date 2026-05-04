@@ -30,12 +30,12 @@ struct UnwrappedLine {
       std::invoke_result_t<decltype(func), Token&&>> {
     using T = std::invoke_result_t<decltype(func), Token&&>;
     std::vector<T> tokens{};
-    std::transform(
-        std::make_move_iterator(this->tokens.begin()),
-        std::make_move_iterator(this->tokens.end()), std::back_inserter(tokens),
-        [&func](Token&& token) -> auto {
-          return std::forward<decltype(func)>(func)(std::move(token));
-        });
+    std::transform(std::make_move_iterator(this->tokens.begin()),
+                   std::make_move_iterator(this->tokens.end()),
+                   std::back_inserter(tokens), [&func](Token&& token) -> auto {
+                     return func(std::move(token));
+                     ;
+                   });
     return {
         .tokens = std::move(tokens),
         .indentation_spaces = this->indentation_spaces,
