@@ -9,6 +9,7 @@
 class LexContext {
  public:
   auto lex_file(std::string_view path) -> std::vector<slang::parsing::Token>;
+  auto lex_string(std::string_view src) -> std::vector<slang::parsing::Token>;
 
   auto source_manager() -> slang::SourceManager& { return source_manager_; }
   auto diagnostics() const -> const slang::Diagnostics& { return diagnostics_; }
