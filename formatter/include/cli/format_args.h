@@ -13,6 +13,8 @@ class FormatArgsBinder {
   explicit FormatArgsBinder(slang::driver::Driver& driver);
   [[nodiscard]] auto buildStyle() -> std::pair<FormatStyle, RunConfig>;
 
+  void printFormatterHelp();
+
  private:
   std::optional<uint32_t> column_limit_;
   std::optional<uint32_t> indentation_spaces_;

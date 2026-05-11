@@ -8,6 +8,21 @@
 
 namespace format {
 
+void FormatArgsBinder::printFormatterHelp() {
+  fmt::print(R"(
+Usage: formatter [options] <files>
+
+Formatting options:
+  -c, --column_limit <N>               Maximum line length (default: 100)
+  -i, --indentation_spaces <N>         Spaces per indentation level (default: 2)
+  -w, --wrap_spaces <N>                Additional indentation when wrapping (default: 4)
+  -b, --line_break_penalty <N>         Penalty for each line break (default: 2)
+  -p, --over_column_limit_penalty <N>  Penalty per character over limit (default: 100)
+  -t, --line_terminator <mode>         auto | lf | crlf (default: auto)
+  -n, --inplace                        Overwrite source files instead of stdout
+)");
+}
+
 struct FlagsName {
   std::string_view lng;
   std::string_view sht;
