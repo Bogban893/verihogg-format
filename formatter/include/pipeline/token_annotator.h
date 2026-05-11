@@ -2,6 +2,8 @@
 
 #include <slang/parsing/Token.h>
 
+#include <gsl/span>
+
 #include "data/format_style.h"
 #include "data/format_token.h"
 #include "data/unwrapped_line.h"
@@ -33,7 +35,7 @@ class TokenAnnotator {
   // Реализуется линейным проходом со стеком открытых скобок.
   // Необходим до determineTokenTypes, потому что классификация токенов
   // зависит от глубины вложенности и наличия парного токена
-  auto matchBrackets(std::span<FormatToken> tokens) const -> void;
+  auto matchBrackets(gsl::span<FormatToken> tokens) const -> void;
 
   // 2 проход: Семантический анализ
   // Определяет TokenType каждого токена - его роль в контексте
@@ -46,7 +48,7 @@ class TokenAnnotator {
   // Использует результаты matchBrackets (nesting_level, matching_bracket)
   // и внутренний стек AnnotationContext для отслеживания текущего региона
   // (внутри списка портов, внутри выражения и тд)
-  auto determineTokenTypes(std::span<FormatToken> tokens) const -> void;
+  auto determineTokenTypes(gsl::span<FormatToken> tokens) const -> void;
 
   // 3 проход: Вычисление метрик форматирования
   // Заполняет FormatToken::before для каждого токена (кроме первого):
@@ -57,7 +59,7 @@ class TokenAnnotator {
   //
   // Решения принимаются делегированием трём методам ниже.
   // Использует TokenType из determineTokenTypes.
-  auto computeInterTokenInfo(std::span<FormatToken> tokens) const -> void;
+  auto computeInterTokenInfo(gsl::span<FormatToken> tokens) const -> void;
 
   // Возвращает количество пробелов, которые нужно вставить между left и right
   // при размещении на одной строке. Зависит от TokenType обоих токенов:
@@ -81,7 +83,7 @@ class TokenAnnotator {
                                    const FormatToken& right) const
       -> BreakDecision;
 
-  auto annotateSpan(std::span<FormatToken> tokens) const -> void;
+  auto annotateSpan(gsl::span<FormatToken> tokens) const -> void;
 
   std::reference_wrapper<const FormatStyle> style;
 };

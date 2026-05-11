@@ -199,7 +199,7 @@ auto preserveBlankLines(size_t newline_count, PrintState& state) -> void {
   }
 }
 
-struct Indent {
+struct Indent {  // Переделать с норм названием
   size_t indent;
   size_t trailing_comment_spaces;
 };

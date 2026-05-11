@@ -6,7 +6,7 @@
 
 #include <cassert>
 #include <cstddef>
-#include <span>
+#include <gsl/span>
 #include <stack>
 #include <vector>
 
@@ -92,7 +92,7 @@ struct TokenPair {
 [[nodiscard]] auto implSpacesRequired(TokenPair p) -> size_t;
 [[nodiscard]] auto implBreakPenalty(TokenPair p) -> size_t;
 [[nodiscard]] auto implBreakDecision(TokenPair p) -> BreakDecision;
-auto implComputeInterTokenInfo(std::span<FormatToken> tokens) -> void;
+auto implComputeInterTokenInfo(gsl::span<FormatToken> tokens) -> void;
 
 }  // namespace
 
@@ -100,7 +100,7 @@ auto implComputeInterTokenInfo(std::span<FormatToken> tokens) -> void;
 // Проход 1: matchBrackets
 // ---------------------------------------------------------------------------
 
-auto TokenAnnotator::matchBrackets(std::span<FormatToken> tokens) const
+auto TokenAnnotator::matchBrackets(gsl::span<FormatToken> tokens) const
     -> void {
   std::stack<FormatToken*> open_stack;
   size_t depth = 0;
@@ -139,7 +139,7 @@ auto TokenAnnotator::matchBrackets(std::span<FormatToken> tokens) const
 // Проход 2: determineTokenTypes
 // ---------------------------------------------------------------------------
 
-auto TokenAnnotator::determineTokenTypes(std::span<FormatToken> tokens) const
+auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
     -> void {
   std::stack<Context> ctx;
   ctx.push(Context::kTopLevel);
@@ -657,7 +657,7 @@ auto implBreakDecision(TokenPair p) -> BreakDecision {
   return BreakDecision::kUndecided;
 }
 
-auto implComputeInterTokenInfo(std::span<FormatToken> tokens) -> void {
+auto implComputeInterTokenInfo(gsl::span<FormatToken> tokens) -> void {
   if (tokens.size() < 2) {
     return;
   }
@@ -690,7 +690,7 @@ auto implComputeInterTokenInfo(std::span<FormatToken> tokens) -> void {
 // annotateSpan — три прохода над contiguous-буфером
 // ---------------------------------------------------------------------------
 
-auto TokenAnnotator::annotateSpan(std::span<FormatToken> tokens) const -> void {
+auto TokenAnnotator::annotateSpan(gsl::span<FormatToken> tokens) const -> void {
   matchBrackets(tokens);
   determineTokenTypes(tokens);
   implComputeInterTokenInfo(tokens);

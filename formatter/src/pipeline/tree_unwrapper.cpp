@@ -3,7 +3,7 @@
 #include <slang/parsing/Token.h>
 #include <slang/parsing/TokenKind.h>
 
-#include <span>
+#include <gsl/span>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -54,7 +54,7 @@ using Line = UnwrappedLine<Token>;
 
 class SVParser {
  public:
-  SVParser(std::span<const Token> tokens, const FormatStyle& style)
+  SVParser(gsl::span<const Token> tokens, const FormatStyle& style)
       : tokens_(tokens), style_(&style) {}
 
   auto parse() -> std::vector<Line> {
@@ -63,7 +63,7 @@ class SVParser {
   }
 
  private:
-  std::span<const Token> tokens_;
+  gsl::span<const Token> tokens_;
   const FormatStyle* style_;
   size_t pos_ = 0;
   Line line_;

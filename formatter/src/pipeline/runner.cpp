@@ -2,7 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
-#include <span>
+#include <gsl/span>
 
 #include "data/format_style.h"
 #include "data/lex_context.h"
@@ -22,7 +22,7 @@ auto writeFile(const std::filesystem::path& path, std::string_view content)
 }
 
 }  // namespace
-auto runFormatter(std::span<const std::filesystem::path> files,
+auto runFormatter(gsl::span<const std::filesystem::path> files,
                   const format::FormatStyle& style,
                   const format::RunConfig& run, Streams streams) -> int {
   int warnings = 0;

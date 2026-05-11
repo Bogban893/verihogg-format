@@ -1,7 +1,7 @@
 #pragma once
 #include <filesystem>
+#include <gsl/span>
 #include <ostream>
-#include <span>
 
 #include "data/format_style.h"
 
@@ -12,7 +12,7 @@ struct Streams {
   std::ostream* err;
 };
 
-auto runFormatter(std::span<const std::filesystem::path> files,
+auto runFormatter(gsl::span<const std::filesystem::path> files,
                   const format::FormatStyle& style,
                   const format::RunConfig& run, Streams streams) -> int;
 }  // namespace format

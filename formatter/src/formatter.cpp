@@ -2,7 +2,7 @@
 
 #include <slang/parsing/Token.h>
 
-#include <span>
+#include <gsl/span>
 
 #include "data/format_style.h"
 #include "pipeline/printer.h"
@@ -11,7 +11,7 @@
 #include "pipeline/tree_unwrapper.h"
 
 namespace format {
-auto format(std::span<const slang::parsing::Token> tokens, FormatStyle style)
+auto format(gsl::span<const slang::parsing::Token> tokens, FormatStyle style)
     -> FormatResult {
   auto unwrappedLines = TreeUnwrapper(tokens, style).unwrap();
   auto annotatedLines = TokenAnnotator(style).annotate(unwrappedLines);
