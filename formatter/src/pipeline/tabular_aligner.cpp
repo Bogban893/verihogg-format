@@ -1,6 +1,7 @@
 #include "pipeline/tabular_aligner.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <string_view>
 
 namespace format {
@@ -8,6 +9,21 @@ namespace format {
 static constexpr size_t kMinColumnGap = 4;
 static constexpr size_t kMinGroupSize = 2;
 static constexpr size_t kCommentColumnGap = 8;
+
+struct AlignmentCell {
+  size_t start_idx = 0;
+  size_t end_idx = 0;
+  size_t width = 0;
+};
+
+using AlignmentRow = std::vector<AlignmentCell>;
+
+struct AlignmentGroup {
+  std::vector<size_t> line_indices;
+  size_t num_columns = 0;
+  std::vector<AlignmentRow> table;
+  std::vector<size_t> col_max_width;
+};
 
 [[nodiscard]] auto static range_width(const std::vector<FormatToken>& tokens,
                                       size_t start, size_t end) -> size_t {
@@ -62,7 +78,7 @@ static constexpr size_t kCommentColumnGap = 8;
         }
         i = j + 1;
       } else {
-        int depth = 1;
+        size_t depth = 1;
         ++i;
         while (i < tokens.size() && depth > 0) {
           if (tokens[i].balancing == GroupBalancing::kOpen) {
@@ -88,8 +104,8 @@ static constexpr size_t kCommentColumnGap = 8;
 }
 
 [[nodiscard]] static auto has_comment(
-    const std::vector<UnwrappedLine<FormatToken>>& lines, size_t line_idx)
-    -> bool {
+    const std::vector<UnwrappedLine<FormatToken>>& lines,
+    size_t line_idx) -> bool {
   const size_t next_idx = line_idx + 1;
   if (next_idx >= lines.size()) {
     return false;
