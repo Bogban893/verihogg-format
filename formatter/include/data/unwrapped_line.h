@@ -4,6 +4,7 @@
 
 #include <concepts>
 #include <cstdint>
+#include <iostream>
 #include <vector>
 
 #include "format_style.h"
@@ -18,64 +19,21 @@ enum class PartitionPolicy : uint8_t {
 };
 
 template <typename Token>
-struct UnwrappedLine;
-
-template <typename Token>
-struct UnwrappedLineNode {
-  Token token;
-  std::vector<UnwrappedLine<Token>> children;
-
-  auto map(std::invocable<Token&&> auto&& func) && -> UnwrappedLineNode<
-      std::invoke_result_t<decltype(func), Token&&>> {
-    using T = std::invoke_result_t<decltype(func), Token&&>;
-    std::vector<UnwrappedLine<T>> children{};
-    std::transform(
-        std::make_move_iterator(this->children.begin()),
-        std::make_move_iterator(this->children.end()),
-        std::back_inserter(children),
-        [&func](UnwrappedLine<Token>&& line) -> auto {
-          return std::move(line).map(std::forward<decltype(func)>(func));
-        });
-    return {
-        .token = std::forward<decltype(func)>(func)(std::move(this->token)),
-        .children = std::move(children),
-    };
-  }
-
-  auto map(std::invocable<const Token&> auto&& func) const
-      -> UnwrappedLineNode<std::invoke_result_t<decltype(func), Token&&>> {
-    using T = std::invoke_result_t<decltype(func), Token&&>;
-    std::vector<UnwrappedLine<T>> children{};
-    std::transform(
-        this->children.begin(), this->children.end(),
-        std::back_inserter(children),
-        [&func](const UnwrappedLine<Token>& line) -> auto {
-          return std::move(line).map(std::forward<decltype(func)>(func));
-        });
-    return {
-        .token = std::forward<decltype(func)>(func)(this->token),
-        .children = std::move(children),
-    };
-  }
-};
-
-template <typename Token>
 struct UnwrappedLine {
-  std::vector<UnwrappedLineNode<Token>> tokens;
+  std::vector<Token> tokens;
 
-  IndentLevel indentation_spaces;
-  PartitionPolicy partition_policy;
-  // todo
+  IndentLevel indentation_spaces = 0;
+  PartitionPolicy partition_policy = PartitionPolicy::kAlwaysExpand;
 
   auto map(std::invocable<Token&&> auto&& func) && -> UnwrappedLine<
       std::invoke_result_t<decltype(func), Token&&>> {
     using T = std::invoke_result_t<decltype(func), Token&&>;
-    std::vector<UnwrappedLineNode<T>> tokens{};
+    std::vector<T> tokens{};
     std::transform(
         std::make_move_iterator(this->tokens.begin()),
         std::make_move_iterator(this->tokens.end()), std::back_inserter(tokens),
-        [&func](UnwrappedLineNode<Token>&& node) -> auto {
-          return std::move(node).map(std::forward<decltype(func)>(func));
+        [&func](Token&& token) -> auto {
+          return std::forward<decltype(func)>(func)(std::move(token));
         });
     return {
         .tokens = std::move(tokens),
@@ -85,13 +43,13 @@ struct UnwrappedLine {
   }
 
   auto map(std::invocable<const Token&> auto&& func) const
-      -> UnwrappedLine<std::invoke_result_t<decltype(func), Token&&>> {
-    using T = std::invoke_result_t<decltype(func), Token&&>;
-    std::vector<UnwrappedLineNode<T>> tokens{};
+      -> UnwrappedLine<std::invoke_result_t<decltype(func), const Token&>> {
+    using T = std::invoke_result_t<decltype(func), const Token&>;
+    std::vector<T> tokens{};
     std::transform(this->tokens.begin(), this->tokens.end(),
                    std::back_inserter(tokens),
-                   [&func](const UnwrappedLineNode<Token>& node) -> auto {
-                     return node.map(std::forward<decltype(func)>(func));
+                   [&func](const Token& token) -> auto {
+                     return std::forward<decltype(func)>(func)(token);
                    });
     return {
         .tokens = std::move(tokens),
@@ -100,5 +58,14 @@ struct UnwrappedLine {
     };
   }
 };
+
+auto printUnwrappedLine(const UnwrappedLine<slang::parsing::Token>& line,
+                        size_t depth = 0, std::ostream& os = std::cout) -> void;
+
+// Prints debug representation: includes token kinds, indices, and indentation
+// metadata — not the formatted source text.
+auto printUnwrappedLines(
+    const std::vector<UnwrappedLine<slang::parsing::Token>>& lines,
+    std::ostream& os = std::cout) -> void;
 
 }  // namespace format

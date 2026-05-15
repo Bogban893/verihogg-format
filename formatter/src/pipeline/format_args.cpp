@@ -8,28 +8,53 @@
 
 namespace format {
 
+void FormatArgsBinder::printFormatterHelp() {
+  fmt::print(R"(
+Usage: formatter [options] <files>
+
+Formatting options:
+  -c, --column_limit <N>               Maximum line length (default: 100)
+  -i, --indentation_spaces <N>         Spaces per indentation level (default: 2)
+  -w, --wrap_spaces <N>                Additional indentation when wrapping (default: 4)
+  -b, --line_break_penalty <N>         Penalty for each line break (default: 2)
+  -p, --over_column_limit_penalty <N>  Penalty per character over limit (default: 100)
+  -t, --line_terminator <mode>         auto | lf | crlf (default: auto)
+  -n, --inplace                        Overwrite source files instead of stdout
+)");
+}
+
+struct FlagsName {
+  std::string_view lng;
+  std::string_view sht;
+};
+
 FormatArgsBinder::FormatArgsBinder(slang::driver::Driver& driver) {
   auto& cl = driver.cmdLine;
 
-  cl.add("--column_limit", column_limit_, "Maximum line length (default: 100)",
-         "<N>");
+  auto add = [&]<typename T>(FlagsName names, std::optional<T>& val,
+                             std::string_view desc,
+                             std::string_view valName = {}) {
+    cl.add(names.lng, val, desc, valName);
+    cl.add(names.sht, val, desc, valName);
+  };
 
-  cl.add("--indentation_spaces", indentation_spaces_,
-         "Spaces for one indentation level (default: 2)", "<N>");
+  add(FlagsName("--column_limit", "-c"), column_limit_,
+      "Maximum line length (default: 100)", "<N>");
+  add(FlagsName("--indentation_spaces", "-i"), indentation_spaces_,
+      "Spaces for one indentation level (default: 2)", "<N>");
+  add(FlagsName("--wrap_spaces", "-w"), wrap_spaces_,
+      "Additional indentation when hyphenating a line (default: 4)", "<N>");
+  add(FlagsName("--line_break_penalty", "-b"), line_break_penalty_,
+      "Penalty for each line break (default: 2)", "<N>");
+  add(FlagsName("--over_column_limit_penalty", "-p"),
+      over_column_limit_penalty_,
+      "Penalty for each character beyond column_limit (default: 100)", "<N>");
+  add(FlagsName("--line_terminator", "-t"), line_terminator_,
+      "End of line character: auto | lf | crlf (default: auto)", "<mode>");
 
-  cl.add("--wrap_spaces", wrap_spaces_,
-         "Additional indentation when hyphenating a line (default: 4)", "<N>");
-
-  cl.add("--line_break_penalty", line_break_penalty_,
-         "Penalty for each line break (default: 2)", "<N>");
-
-  cl.add("--over_column_limit_penalty", over_column_limit_penalty_,
-         "Penalty for each character beyond column_limit (default: 100)",
-         "<N>");
-
-  cl.add("--line_terminator", line_terminator_,
-         "End of line character: auto | lf | crlf (default: auto)", "<mode>");
   cl.add("--inplace", inplace_,
+         "Overwrite the source files instead of outputting to stdout");
+  cl.add("-n", inplace_,
          "Overwrite the source files instead of outputting to stdout");
 }
 
