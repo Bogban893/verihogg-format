@@ -15,6 +15,13 @@ auto main(int argc, char** argv) -> int {
     driver.addStandardArgs();
 
     format::FormatArgsBinder binder(driver);
+    auto args = gsl::span(argv, argc);
+    for (std::string_view arg : args.subspan(1)) {
+      if (arg == "--help" || arg == "-h") {
+        binder.printFormatterHelp();
+        return 0;
+      }
+    }
 
     if (!driver.parseCommandLine(argc, argv)) {
       return 1;

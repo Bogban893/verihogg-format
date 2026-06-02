@@ -13,6 +13,7 @@ enum class BreakDecision : uint8_t {
 struct InterTokenInfo {
   size_t spaces_required;
   size_t break_penalty;
+  size_t comment_spaces;
   BreakDecision break_decision;
 };
 
@@ -36,12 +37,12 @@ enum class GroupBalancing : uint8_t {
 enum class TokenType : uint8_t {
   kUnknown,
 
-  // Операторы
+  // Operators
   kBinaryOperator,
   kUnaryOperator,
   kAssignmentOperator,
 
-  // Разделители
+  // Delimiters
   kSemicolon,
   kColon,
   kComma,
@@ -49,14 +50,14 @@ enum class TokenType : uint8_t {
   kHash,
   kAtSign,
 
-  // Идентификаторы
+  // Identifiers
   kModuleName,
   kPortName,
   kParameterName,
   kTypeName,
   kInstanceName,
 
-  // Ключевые слова - структурные
+  // Keywords — structural
   kModuleKeyword,
   kEndModuleKeyword,
   kFunctionKeyword,
@@ -68,7 +69,7 @@ enum class TokenType : uint8_t {
   kGenerateKeyword,
   kEndGenerateKeyword,
 
-  // Ключевые слова - управляющие
+  // Keywords — control flow
   kAlwaysKeyword,
   kBeginKeyword,
   kEndKeyword,
@@ -80,13 +81,21 @@ enum class TokenType : uint8_t {
   kDefaultKeyword,
   kCaseLabel,
 
-  // Типы и направления (для табличного выравнивания)
+  // Types and directions (for tabular alignment)
   kPortDirection,  // input/output/inout/ref
   kTypeKeyword,    // logic/wire/reg/bit/int...
 
-  // Комментарии
+  // Comments
   kLineComment,
   kBlockComment,
+
+  kIntegerBase,
+  kEdgeKeyword,
+  kAssignKeyword,
+  kDirective,
+  kTernaryOperator,
+  kSvaBinaryOperator,
+  kSvaKeyword
 };
 
 struct FormatToken {
@@ -96,7 +105,7 @@ struct FormatToken {
   GroupBalancing balancing{GroupBalancing::kNone};
 
   TokenType type = TokenType::kUnknown;
-  FormatToken* matching_bracket = nullptr;  // парная скобка/begin-end
+  FormatToken* matching_bracket = nullptr;  // matching bracket/begin-end pair
   size_t nesting_level = 0;
 };
 

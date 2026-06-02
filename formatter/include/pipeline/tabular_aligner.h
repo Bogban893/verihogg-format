@@ -1,10 +1,14 @@
 #pragma once
 
+#include <cstddef>
+#include <vector>
+
 #include "data/format_style.h"
 #include "data/format_token.h"
 #include "data/unwrapped_line.h"
 
 namespace format {
+
 void align(std::vector<UnwrappedLine<FormatToken>>& lines,
            const FormatStyle& style);
 }  // namespace format

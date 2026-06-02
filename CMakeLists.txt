@@ -7,7 +7,7 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose build type" FORCE)
 endif()
 
-# Use C++17
+# Use C++20
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -26,28 +26,38 @@ add_executable(${PROJECT_NAME} ${SRC})
 
 target_include_directories(${PROJECT_NAME}
   PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/formatter/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/formatter/include>
 )
-
-target_link_libraries(${PROJECT_NAME} slang::slang Microsoft.GSL::GSL)
+target_link_libraries(${PROJECT_NAME} PRIVATE slang::slang Microsoft.GSL::GSL)
 
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /W4 /bigobj)
+  target_compile_options(${PROJECT_NAME} PRIVATE /W4 /bigobj)
 else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 
 # Install rule
 include(GNUInstallDirs)
 install(TARGETS ${PROJECT_NAME}
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
+# if(NOT DEFINED BUILD_TESTING)
+# set(BUILD_TESTING ON)
+# endif()
 find_package(GTest QUIET)
+
 if(GTest_FOUND)
   enable_testing()
-  message(STATUS "GTest_FOUND: ${GTest_FOUND}")
-  message(STATUS "TEST_SRC: ${TEST_SRC}")
-  message(STATUS "LIB_SRC: ${LIB_SRC}")
+
+  if(DEFINED ENV{SCR1_ROOT})
+    set(SCR1_PATH "$ENV{SCR1_ROOT}")
+  elseif(DEFINED SCR1_ROOT)
+    set(SCR1_PATH "${SCR1_ROOT}")
+  else()
+    message(FATAL_ERROR "SCR1_ROOT not set (needed for tests)")
+  endif()
+
+  message(STATUS "Using SCR1 from: ${SCR1_PATH}")
 
   file(GLOB_RECURSE LIB_SRC formatter/src/**.cpp)
   list(FILTER LIB_SRC EXCLUDE REGEX ".*/main\\.cpp$")
@@ -57,12 +67,13 @@ if(GTest_FOUND)
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/formatter/include>)
   target_link_libraries(verihogg-format-lib PUBLIC slang::slang)
 
-  file(GLOB_RECURSE TEST_SRC formatter/tests/**.cpp)
+  file(GLOB_RECURSE TEST_SRC formatter/tests/*.cpp)
+
   if(TEST_SRC)
     add_executable(verihogg-tests ${TEST_SRC})
     target_link_libraries(verihogg-tests PRIVATE verihogg-format-lib GTest::gtest GTest::gtest_main)
+    target_compile_definitions(verihogg-tests PRIVATE SCR1_DIR="${SCR1_PATH}")
     include(GoogleTest)
-    gtest_discover_tests(verihogg-tests)
+    gtest_discover_tests(verihogg-tests DISCOVERY_MODE PRE_TEST)
   endif()
 endif()
-
