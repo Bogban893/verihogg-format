@@ -66,6 +66,7 @@
               [
                 sv-lang
                 microsoft-gsl
+                cli11
               ]
               ++ sv-lang.buildInputs;
 
