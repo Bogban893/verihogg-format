@@ -9,10 +9,11 @@
 namespace format {
 
 template <typename T>
-void add_aliased(CLI::App& app, std::string_view lng, std::string_view sht,
-                 std::optional<T>& val, std::string_view desc) {
-  app.add_option(std::string(lng) + "," + std::string(sht), val,
-                 std::string(desc));
+void add_aliased(
+    CLI::App& app,
+    std::string_view lng,  // NOLINT(bugprone-easily-swappable-parameters)
+    std::string_view sht, std::optional<T>& val, std::string_view desc) {
+  app.add_option(fmt::format("{},{}", lng, sht), val, std::string(desc));
 }
 
 void FormatArgsBinder::printFormatterHelp() const {
@@ -31,8 +32,8 @@ Formatting options:
 }
 
 struct FlagsName {
-  std::string_view lng;
-  std::string_view sht;
+  std::string_view lng{};
+  std::string_view sht{};
 };
 
 FormatArgsBinder::FormatArgsBinder() {

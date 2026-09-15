@@ -34,7 +34,7 @@ class FormatArgsBinder {
  private:
   CLI::App app_{"formatter"};
 
-  std::vector<std::string> files_;
+  std::vector<std::string> files_{};
 
   std::optional<uint32_t> column_limit_;
   std::optional<uint32_t> indentation_spaces_;

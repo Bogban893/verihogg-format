@@ -99,7 +99,7 @@ enum class TokenType : uint8_t {
 };
 
 struct FormatToken {
-  slang::parsing::Token token;
+  slang::parsing::Token token{};
   InterTokenInfo before{};
   InterTokenDecision decision{};
   GroupBalancing balancing{GroupBalancing::kNone};
