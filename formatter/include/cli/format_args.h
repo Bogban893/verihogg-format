@@ -19,14 +19,14 @@ class FormatArgsBinder {
 
   void printFormatterHelp() const;
 
-  // Парсит argc/argv. Неизвестные флаги не являются ошибкой, на каждый в err
-  // пишется warning, парсинг продолжается. Ошибка в известном флаге
-  // (например, --column_limit=abc) бросает CLI::ParseError.
+  // Parses argc/argv. Unknown flags are not an error; for each one, a warning
+  // is written to err and parsing continues. An error in a known flag
+  // (e.g., --column_limit=abc) throws CLI::ParseError.
   void parse(int argc, char** argv, std::ostream& err);
 
   auto buildStyle() -> std::pair<FormatStyle, RunConfig>;
 
-  // Всё, что не похоже на флаг -> собрано сюда самим CLI11.
+  // Anything that does not look like a flag is collected here by CLI11 itself.
   [[nodiscard]] auto files() const -> const std::vector<std::string>& {
     return files_;
   }

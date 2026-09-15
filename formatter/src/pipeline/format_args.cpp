@@ -36,12 +36,12 @@ struct FlagsName {
 };
 
 FormatArgsBinder::FormatArgsBinder() {
-  // Своя справка — выключаем автоматическую (-h/--help не регистрируются
-  // как опция CLI11 вообще; main перехватывает их до парсинга).
+  // Custom help — disable automatic (-h/--help are not registered
+  // as a CLI11 option at all; main intercepts them before parsing).
   app_.set_help_flag();
 
-  // Нераспознанные токены не кидают исключение,
-  // а складываются в app_.remaining().
+  // Unrecognized tokens do not throw an exception,
+  // but are collected in app_.remaining().
   app_.allow_extras();
 
   add_aliased(app_, "--column_limit", "-c", column_limit_,
@@ -63,9 +63,9 @@ FormatArgsBinder::FormatArgsBinder() {
   app_.add_flag("--inplace,-n", inplace_,
                 "Overwrite the source files instead of outputting to stdout");
 
-  // Позиционный "файлы". Не начинающиеся с '-' токены CLI11 кладёт сюда
-  // сам — до попыток сопоставить их с опциями, поэтому классифицировать
-  // "файл или неизвестный флаг" руками не нужно.
+  // Positional "files". Tokens not starting with '-' are placed here by
+  // CLI11 itself — before attempts to match them with options, so there's
+  // no need to manually classify "file or unknown flag".
   app_.add_option("files", files_, "Source files to format")->type_name("FILE");
 }
 

@@ -34,7 +34,6 @@ enum class LineTerminator : uint8_t {
 
 struct RunConfig {
   bool inplace = false;
-  // Какая-то лажа со списком
   std::string stdin_name = "<stdin>";
   std::vector<std::string> input_files;
 };
