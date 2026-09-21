@@ -12,6 +12,10 @@ class FormatArgsTest : public ::testing::Test {
   void SetUp() override { binder.emplace(); }
 
   [[nodiscard]] auto parse(const std::vector<const char*>& args) -> bool {
+    if (!binder.has_value()) {
+      return false;
+    }
+
     std::vector<std::string> storage;
     storage.reserve(args.size() + 1);
     storage.emplace_back("formatter");
@@ -27,8 +31,7 @@ class FormatArgsTest : public ::testing::Test {
 
     std::ostringstream dummy_err{};
     try {
-      binder.value().parse(static_cast<int>(argv.size()), argv.data(),
-                           dummy_err);
+      binder->parse(static_cast<int>(argv.size()), argv.data(), dummy_err);
       return true;
     } catch (const CLI::ParseError&) {
       return false;
@@ -38,10 +41,16 @@ class FormatArgsTest : public ::testing::Test {
   [[nodiscard]] auto buildStyle(const std::vector<const char*>& args = {})
       -> std::pair<format::FormatStyle, format::RunConfig> {
     EXPECT_TRUE(parse(args));
+    if (!binder.has_value()) {
+      throw std::runtime_error("binder is not initialized");
+    }
     return binder->buildStyle();
   }
 
   [[nodiscard]] auto getBinder() -> format::FormatArgsBinder& {
+    if (!binder.has_value()) {
+      throw std::runtime_error("binder is not initialized");
+    }
     return *binder;
   }
 
