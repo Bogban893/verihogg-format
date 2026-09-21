@@ -21,7 +21,7 @@ enum class PartitionPolicy : uint8_t {
 
 template <typename Token>
 struct UnwrappedLine {
-  std::vector<Token> tokens;
+  std::vector<Token> tokens{};
 
   IndentLevel indentation_spaces = 0;
   PartitionPolicy partition_policy = PartitionPolicy::kAlwaysExpand;
