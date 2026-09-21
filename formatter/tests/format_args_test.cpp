@@ -27,7 +27,8 @@ class FormatArgsTest : public ::testing::Test {
 
     std::ostringstream dummy_err{};
     try {
-      binder->parse(static_cast<int>(argv.size()), argv.data(), dummy_err);
+      binder.value().parse(static_cast<int>(argv.size()), argv.data(),
+                           dummy_err);
       return true;
     } catch (const CLI::ParseError&) {
       return false;
