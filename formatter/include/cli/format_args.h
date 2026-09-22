@@ -4,7 +4,6 @@
 
 #include <CLI/CLI.hpp>
 #include <optional>
-#include <ostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -22,7 +21,7 @@ class FormatArgsBinder {
   // Parses argc/argv. Unknown flags are not an error; for each one, a warning
   // is written to err and parsing continues. An error in a known flag
   // (e.g., --column_limit=abc) throws CLI::ParseError.
-  void parse(int argc, char** argv, std::ostream& err);
+  void parse(int argc, char** argv);
 
   auto buildStyle() -> std::pair<FormatStyle, RunConfig>;
 
@@ -30,6 +29,10 @@ class FormatArgsBinder {
   [[nodiscard]] auto files() const -> const std::vector<std::string>& {
     return files_;
   }
+
+  // Getters for the underlying CLI::App instance
+  [[nodiscard]] auto app() -> CLI::App& { return app_; }
+  [[nodiscard]] auto app() const -> const CLI::App& { return app_; }
 
  private:
   CLI::App app_{"formatter"};

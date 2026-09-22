@@ -35,7 +35,11 @@ auto main(int argc, char** argv) -> int {
       }
     }
 
-    binder.parse(argc, argv, std::cerr);
+    try {
+      binder.parse(argc, argv);
+    } catch (const CLI::ParseError& e) {
+      return binder.app().exit(e);
+    }
 
     slang::driver::Driver driver;
     for (const auto& file : binder.files()) {

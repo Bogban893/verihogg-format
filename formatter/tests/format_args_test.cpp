@@ -2,8 +2,6 @@
 
 #include <gtest/gtest.h>
 
-#include <sstream>
-
 #include "data/format_style.h"
 
 namespace {
@@ -29,9 +27,8 @@ class FormatArgsTest : public ::testing::Test {
       argv.push_back(s.data());
     }
 
-    std::ostringstream dummy_err{};
     try {
-      binder->parse(static_cast<int>(argv.size()), argv.data(), dummy_err);
+      binder->parse(static_cast<int>(argv.size()), argv.data());
       return true;
     } catch (const CLI::ParseError&) {
       return false;
@@ -210,22 +207,6 @@ TEST_F(FormatArgsTest, NonNumericColumnLimitRejectedByParser) {
 
 TEST_F(FormatArgsTest, NegativeColumnLimitRejectedByParser) {
   EXPECT_FALSE(parse({"--column_limit", "-1"}));
-}
-
-TEST_F(FormatArgsTest, UnknownFlagIsIgnoredAndWarningPrinted) {
-  std::ostringstream err_stream;
-
-  std::vector<std::string> args = {"formatter", "--unknown_flag"};
-  std::vector<char*> argv;
-  argv.reserve(args.size());
-  for (auto& arg : args) {
-    argv.push_back(arg.data());
-  }
-
-  EXPECT_NO_THROW(getBinder().parse(static_cast<int>(argv.size()), argv.data(),
-                                    err_stream));
-  EXPECT_NE(err_stream.str().find("unknown option '--unknown_flag'"),
-            std::string::npos);
 }
 
 }  // namespace

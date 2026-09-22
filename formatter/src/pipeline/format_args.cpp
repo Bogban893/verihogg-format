@@ -9,11 +9,9 @@
 namespace format {
 
 template <typename T>
-void add_aliased(
-    CLI::App& app,
-    std::string_view lng,  // NOLINT(bugprone-easily-swappable-parameters)
-    std::string_view sht, std::optional<T>& val, std::string_view desc) {
-  app.add_option(fmt::format("{},{}", lng, sht), val, std::string(desc));
+void add_aliased(CLI::App& app, std::string_view lng, std::string_view sht,
+                 std::optional<T>& val, std::string_view desc) {
+  app.add_option(fmt::format("{},{}", sht, lng), val, std::string(desc));
 }
 
 void FormatArgsBinder::printFormatterHelp() const {
@@ -41,10 +39,6 @@ FormatArgsBinder::FormatArgsBinder() {
   // as a CLI11 option at all; main intercepts them before parsing).
   app_.set_help_flag();
 
-  // Unrecognized tokens do not throw an exception,
-  // but are collected in app_.remaining().
-  app_.allow_extras();
-
   add_aliased(app_, "--column_limit", "-c", column_limit_,
               "Maximum line length (default: 100)");
   add_aliased(app_, "--indentation_spaces", "-i", indentation_spaces_,
@@ -57,11 +51,11 @@ FormatArgsBinder::FormatArgsBinder() {
               over_column_limit_penalty_,
               "Penalty per character over limit (default: 100)");
 
-  app_.add_option("--line_terminator,-t", line_terminator_,
+  app_.add_option("-t,--line_terminator", line_terminator_,
                   "End of line character: auto | lf | crlf (default: auto)")
       ->check(CLI::IsMember({"auto", "lf", "crlf"}));
 
-  app_.add_flag("--inplace,-n", inplace_,
+  app_.add_flag("-n,--inplace", inplace_,
                 "Overwrite the source files instead of outputting to stdout");
 
   // Positional "files". Tokens not starting with '-' are placed here by
@@ -100,12 +94,6 @@ auto FormatArgsBinder::buildStyle() -> std::pair<FormatStyle, RunConfig> {
   return {s, run};
 }
 
-void FormatArgsBinder::parse(int argc, char** argv, std::ostream& err) {
-  app_.parse(argc, argv);
-
-  for (const auto& token : app_.remaining()) {
-    err << "Warning: unknown option '" << token << "', ignoring\n";
-  }
-}
+void FormatArgsBinder::parse(int argc, char** argv) { app_.parse(argc, argv); }
 
 }  // namespace format
