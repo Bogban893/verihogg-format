@@ -26,6 +26,7 @@ Formatting options:
   -p, --over_column_limit_penalty <N>  Penalty per character over limit (default: 100)
   -t, --line_terminator <mode>         auto | lf | crlf (default: auto)
   -n, --inplace                        Overwrite source files instead of stdout
+      --check                          Check formatting without rewriting files
 )");
 }
 
@@ -55,8 +56,11 @@ FormatArgsBinder::FormatArgsBinder() {
                   "End of line character: auto | lf | crlf (default: auto)")
       ->check(CLI::IsMember({"auto", "lf", "crlf"}));
 
-  app_.add_flag("-n,--inplace", inplace_,
-                "Overwrite the source files instead of outputting to stdout");
+  auto* inplace = app_.add_flag(
+      "-n,--inplace", inplace_,
+      "Overwrite the source files instead of outputting to stdout");
+  app_.add_flag("--check", check_, "Check formatting without rewriting files")
+      ->excludes(inplace);
 
   // Positional "files". Tokens not starting with '-' are placed here by
   // CLI11 itself — before attempts to match them with options, so there's
@@ -89,6 +93,9 @@ auto FormatArgsBinder::buildStyle() -> std::pair<FormatStyle, RunConfig> {
   RunConfig run;
   if (inplace_.has_value()) {
     run.inplace = *inplace_;
+  }
+  if (check_.has_value()) {
+    run.check = *check_;
   }
 
   return {s, run};

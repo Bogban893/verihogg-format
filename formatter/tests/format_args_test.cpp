@@ -128,6 +128,21 @@ TEST_F(FormatArgsTest, InplaceFlagSetsRunConfig) {
 }
 
 // ---------------------------------------------------------------------------
+// --check flag
+// ---------------------------------------------------------------------------
+
+TEST_F(FormatArgsTest, CheckFlagSetsRunConfig) {
+  auto [style, run] = buildStyle({"--check"});
+
+  EXPECT_TRUE(run.check);
+  EXPECT_FALSE(run.inplace);
+}
+
+TEST_F(FormatArgsTest, CheckAndInplaceRejectedByParser) {
+  EXPECT_FALSE(parse({"--check", "--inplace"}));
+}
+
+// ---------------------------------------------------------------------------
 // --line_terminator: all three valid values
 // ---------------------------------------------------------------------------
 

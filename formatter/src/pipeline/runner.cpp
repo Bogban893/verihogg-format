@@ -11,6 +11,7 @@
 #include "data/format_warning.h"
 #include "data/lex_context.h"
 #include "formatter.h"
+#include "pipeline/format_checker.h"
 
 namespace format {
 
@@ -42,10 +43,41 @@ auto printWarning(std::ostream& os, std::string_view path,
   os << ": " << warning.message << " [" << warning.code << "]\n";
 }
 
+// Returns the number of files that need formatting or could not be read.
+auto runCheck(gsl::span<const std::filesystem::path> files,
+              const format::FormatStyle& style, Streams streams) -> int {
+  const FormatChecker checker{style};
+  int failed = 0;
+  for (const auto& path : files) {
+    auto result = checker.checkFile(path);
+    for (const auto& warning : result.warnings) {
+      printWarning(*streams.err, path.string(), warning);
+    }
+
+    switch (result.status) {
+      case CheckStatus::kClean:
+        break;
+      case CheckStatus::kDirty:
+        *streams.err << "Needs formatting: " << path.string() << "\n";
+        ++failed;
+        break;
+      case CheckStatus::kUnreadable:
+        *streams.err << "Error: cannot read " << path.string() << "\n";
+        ++failed;
+        break;
+    }
+  }
+  return failed;
+}
+
 }  // namespace
 auto runFormatter(gsl::span<const std::filesystem::path> files,
                   const format::FormatStyle& style,
                   const format::RunConfig& run, Streams streams) -> int {
+  if (run.check) {
+    return runCheck(files, style, streams);
+  }
+
   int warnings = 0;
   for (const auto& path : files) {
     LexContext ctx;
