@@ -48,12 +48,21 @@ class RunnerInplaceTest : public ::testing::Test {
                          {.out = &out_, .err = &err_});
   }
 
-  auto runCheck() -> int {
+  auto runCheck() -> int { return runCheck({path_}); }
+
+  auto runCheck(const std::vector<fs::path>& files) -> int {
     format::RunConfig run;
     run.check = true;
-    std::vector<fs::path> files{path_};
     return format::runFormatter(files, format::FormatStyle::defaults(), run,
                                 {.out = &out_, .err = &err_});
+  }
+
+  [[nodiscard]] auto makeFile(const fs::path& name,
+                              const std::string& content) const -> fs::path {
+    auto path = dir_ / name;
+    std::ofstream f{path, std::ios::binary | std::ios::trunc};
+    f << content;
+    return path;
   }
 
   [[nodiscard]] auto path() const -> const fs::path& { return path_; }
@@ -107,6 +116,28 @@ TEST_F(RunnerInplaceTest, CheckPassesOnFormattedFile) {
 
   EXPECT_EQ(runCheck(), 0);
   EXPECT_EQ(err().find("Needs formatting"), std::string::npos);
+}
+
+TEST_F(RunnerInplaceTest, CheckManyFilesReportsDirtyInInputOrder) {
+  const std::string dirty = "module m;\nassign   a=b;\nendmodule\n";
+  writeInput(dirty);
+  runInplace();
+  const std::string clean = readInput();
+
+  constexpr int kFileCount = 32;
+  std::vector<fs::path> files;
+  std::string expected_err;
+  for (int i = 0; i < kFileCount; ++i) {
+    const bool is_dirty = i % 3 == 0;
+    files.push_back(
+        makeFile("f" + std::to_string(i) + ".sv", is_dirty ? dirty : clean));
+    if (is_dirty) {
+      expected_err += "Needs formatting: " + files.back().string() + "\n";
+    }
+  }
+
+  EXPECT_EQ(runCheck(files), (kFileCount + 2) / 3);
+  EXPECT_EQ(err(), expected_err);
 }
 
 TEST_F(RunnerInplaceTest, CheckReportsMissingFile) {

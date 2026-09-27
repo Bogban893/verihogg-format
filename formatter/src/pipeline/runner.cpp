@@ -1,11 +1,18 @@
 #include "pipeline/runner.h"
 
+#include <algorithm>
+#include <atomic>
+#include <cstddef>
+#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <gsl/span>
 #include <iterator>
+#include <mutex>
 #include <string>
 #include <string_view>
+#include <thread>
+#include <vector>
 
 #include "data/format_style.h"
 #include "data/format_warning.h"
@@ -43,13 +50,54 @@ auto printWarning(std::ostream& os, std::string_view path,
   os << ": " << warning.message << " [" << warning.code << "]\n";
 }
 
+// Checks files on a pool of worker threads. Results are stored by file index,
+// so the output order does not depend on thread scheduling.
+auto checkInParallel(gsl::span<const std::filesystem::path> files,
+                     const FormatChecker& checker) -> std::vector<CheckResult> {
+  std::vector<CheckResult> results(files.size());
+  std::atomic<size_t> next{0};
+  std::exception_ptr error;
+  std::mutex error_mutex;
+
+  auto worker = [&] {
+    try {
+      for (size_t i = next++; i < files.size(); i = next++) {
+        results.at(i) = checker.checkFile(files[i]);
+      }
+    } catch (...) {
+      const std::scoped_lock lock{error_mutex};
+      if (!error) {
+        error = std::current_exception();
+      }
+      next = files.size();
+    }
+  };
+
+  const size_t thread_count = std::min<size_t>(
+      std::max(1U, std::thread::hardware_concurrency()), files.size());
+  {
+    std::vector<std::jthread> threads;
+    threads.reserve(thread_count);
+    for (size_t i = 0; i < thread_count; ++i) {
+      threads.emplace_back(worker);
+    }
+  }  // threads join here
+
+  if (error) {
+    std::rethrow_exception(error);
+  }
+  return results;
+}
+
 // Returns the number of files that need formatting or could not be read.
 auto runCheck(gsl::span<const std::filesystem::path> files,
               const format::FormatStyle& style, Streams streams) -> int {
   const FormatChecker checker{style};
+  const auto results = checkInParallel(files, checker);
   int failed = 0;
-  for (const auto& path : files) {
-    auto result = checker.checkFile(path);
+  for (size_t i = 0; i < files.size(); ++i) {
+    const auto& path = files[i];
+    const auto& result = results.at(i);
     for (const auto& warning : result.warnings) {
       printWarning(*streams.err, path.string(), warning);
     }
