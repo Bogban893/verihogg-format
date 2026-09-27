@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <fstream>
 #include <gsl/span>
+#include <iterator>
+#include <string>
 #include <string_view>
 
 #include "data/format_style.h"
@@ -21,6 +23,14 @@ auto writeFile(const std::filesystem::path& path, std::string_view content)
     throw std::runtime_error("Cannot open: " + std::string{path});
   }
   f << content;
+}
+
+auto readFile(const std::filesystem::path& path) -> std::string {
+  std::ifstream f{path, std::ios::binary};
+  if (!f) {
+    throw std::runtime_error("Cannot open: " + std::string{path});
+  }
+  return {std::istreambuf_iterator<char>{f}, std::istreambuf_iterator<char>{}};
 }
 
 auto printWarning(std::ostream& os, std::string_view path,
@@ -53,7 +63,10 @@ auto runFormatter(gsl::span<const std::filesystem::path> files,
     }
 
     if (run.inplace) {
-      writeFile(path, result.formatted_text);
+      // Skip the write when nothing changed to avoid needless disk writes.
+      if (readFile(path) != result.formatted_text) {
+        writeFile(path, result.formatted_text);
+      }
     } else {
       *streams.out << result.formatted_text;
     }
