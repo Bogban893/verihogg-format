@@ -47,6 +47,7 @@ class FormatArgsBinder {
   std::optional<std::string> line_terminator_;
   std::optional<bool> inplace_;
   std::optional<bool> check_;
+  std::optional<std::string> cache_;
 };
 
 }  // namespace format
