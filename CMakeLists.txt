@@ -16,6 +16,11 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 file(GLOB_RECURSE SRC CONFIGURE_DEPENDS formatter/src/**.cpp)
 
 find_package(slang REQUIRED)
+
+get_target_property(SLANG_DEFS slang::slang INTERFACE_COMPILE_DEFINITIONS)
+list(FILTER SLANG_DEFS EXCLUDE REGEX "SLANG_DEBUG")
+set_target_properties(slang::slang PROPERTIES
+  INTERFACE_COMPILE_DEFINITIONS "${SLANG_DEFS}")
 find_package(Microsoft.GSL CONFIG REQUIRED)
 
 find_package(CLI11 CONFIG REQUIRED)
