@@ -27,6 +27,8 @@ Formatting options:
   -t, --line_terminator <mode>         auto | lf | crlf (default: auto)
   -n, --inplace                        Overwrite source files instead of stdout
       --check                          Check formatting without rewriting files
+      --cache[=<file>]                 With --check: skip files known to be formatted
+                                       (default file: .verihogg-format-cache)
 )");
 }
 
@@ -59,8 +61,14 @@ FormatArgsBinder::FormatArgsBinder() {
   auto* inplace = app_.add_flag(
       "-n,--inplace", inplace_,
       "Overwrite the source files instead of outputting to stdout");
-  app_.add_flag("--check", check_, "Check formatting without rewriting files")
-      ->excludes(inplace);
+  auto* check = app_.add_flag("--check", check_,
+                              "Check formatting without rewriting files")
+                    ->excludes(inplace);
+  // A flag rather than an option, so "--cache file.sv" doesn't take a source
+  // file as the cache path; a custom path is given as --cache=<file>.
+  app_.add_flag("--cache{.verihogg-format-cache}", cache_,
+                "With --check: skip files known to be formatted")
+      ->needs(check);
 
   // Positional "files". Tokens not starting with '-' are placed here by
   // CLI11 itself — before attempts to match them with options, so there's
@@ -96,6 +104,9 @@ auto FormatArgsBinder::buildStyle() -> std::pair<FormatStyle, RunConfig> {
   }
   if (check_.has_value()) {
     run.check = *check_;
+  }
+  if (cache_.has_value()) {
+    run.cache_file = *cache_;
   }
 
   return {s, run};

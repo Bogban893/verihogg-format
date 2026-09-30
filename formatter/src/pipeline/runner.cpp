@@ -9,6 +9,7 @@
 #include <gsl/span>
 #include <iterator>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -18,6 +19,7 @@
 #include "data/format_warning.h"
 #include "data/lex_context.h"
 #include "formatter.h"
+#include "pipeline/cache_manager.h"
 #include "pipeline/format_checker.h"
 
 namespace format {
@@ -53,7 +55,8 @@ auto printWarning(std::ostream& os, std::string_view path,
 // Checks files on a pool of worker threads. Results are stored by file index,
 // so the output order does not depend on thread scheduling.
 auto checkInParallel(gsl::span<const std::filesystem::path> files,
-                     const FormatChecker& checker) -> std::vector<CheckResult> {
+                     const FormatChecker& checker, const CacheManager* cache)
+    -> std::vector<CheckResult> {
   std::vector<CheckResult> results(files.size());
   std::atomic<size_t> next{0};
   std::exception_ptr error;
@@ -62,7 +65,7 @@ auto checkInParallel(gsl::span<const std::filesystem::path> files,
   auto worker = [&] {
     try {
       for (size_t i = next++; i < files.size(); i = next++) {
-        results.at(i) = checker.checkFile(files[i]);
+        results.at(i) = checker.checkFile(files[i], cache);
       }
     } catch (...) {
       const std::scoped_lock lock{error_mutex};
@@ -91,9 +94,20 @@ auto checkInParallel(gsl::span<const std::filesystem::path> files,
 
 // Returns the number of files that need formatting or could not be read.
 auto runCheck(gsl::span<const std::filesystem::path> files,
-              const format::FormatStyle& style, Streams streams) -> int {
+              const format::FormatStyle& style, const RunConfig& run,
+              Streams streams) -> int {
+  std::optional<CacheManager> cache;
+  if (run.cache_file.has_value()) {
+    cache.emplace(*run.cache_file, makeCacheKey(style));
+    if (!cache->load()) {
+      *streams.err << "Warning: ignoring corrupted cache "
+                   << run.cache_file->string() << "\n";
+    }
+  }
+
   const FormatChecker checker{style};
-  const auto results = checkInParallel(files, checker);
+  const auto results =
+      checkInParallel(files, checker, cache ? &*cache : nullptr);
   int failed = 0;
   for (size_t i = 0; i < files.size(); ++i) {
     const auto& path = files[i];
@@ -114,6 +128,14 @@ auto runCheck(gsl::span<const std::filesystem::path> files,
         ++failed;
         break;
     }
+    if (cache && result.stamp) {
+      cache->update(path, *result.stamp);
+    }
+  }
+
+  if (cache && !cache->save()) {
+    *streams.err << "Warning: cannot write cache " << cache->file().string()
+                 << "\n";
   }
   return failed;
 }
@@ -123,7 +145,7 @@ auto runFormatter(gsl::span<const std::filesystem::path> files,
                   const format::FormatStyle& style,
                   const format::RunConfig& run, Streams streams) -> int {
   if (run.check) {
-    return runCheck(files, style, streams);
+    return runCheck(files, style, run, streams);
   }
 
   int warnings = 0;
