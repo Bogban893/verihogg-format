@@ -13,11 +13,18 @@ class LexContext {
       -> std::vector<slang::parsing::Token>;
   auto lex_string(std::string_view src) -> std::vector<slang::parsing::Token>;
 
+  [[nodiscard]] auto source_text() const -> std::string_view {
+    return source_text_;
+  }
   auto source_manager() -> slang::SourceManager& { return source_manager_; }
   auto diagnostics() const -> const slang::Diagnostics& { return diagnostics_; }
 
  private:
+  auto lex_buffer(const slang::SourceBuffer& buffer)
+      -> std::vector<slang::parsing::Token>;
+
   slang::SourceManager source_manager_;
+  std::string_view source_text_;
   slang::BumpAllocator alloc_;
   slang::Diagnostics diagnostics_;
 };

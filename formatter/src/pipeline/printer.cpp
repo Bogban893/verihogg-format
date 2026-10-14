@@ -20,6 +20,8 @@ using slang::parsing::TriviaKind;
 struct CompletedLine {
   std::string text;
   bool has_code = false;
+  bool exact = false;
+  bool append_terminator = true;
 };
 
 class PrintState {
@@ -36,6 +38,14 @@ class PrintState {
   auto appendSpaces(size_t count) -> void { current_.append(count, ' '); }
 
   auto appendRaw(std::string_view text) -> void { current_.append(text); }
+
+  auto appendToLastLine(std::string_view text) -> void {
+    if (lines_.empty()) {
+      current_.append(text);
+    } else {
+      lines_.back().text.append(text);
+    }
+  }
 
   auto appendToken(std::string_view text) -> void {
     current_.append(text);
@@ -56,6 +66,16 @@ class PrintState {
     if (!current_.empty()) {
       finishLine();
     }
+  }
+
+  auto appendOpaque(std::string_view source) -> void {
+    finishLineIfNeeded();
+    if (!lines_.empty() && !lines_.back().exact) {
+      lines_.back().append_terminator = false;
+    }
+    lines_.push_back(CompletedLine{.text = std::string(source),
+                                   .exact = true,
+                                   .append_terminator = false});
   }
 
   auto addBlankLine() -> void {
@@ -124,17 +144,28 @@ class PrintState {
     return current_.empty();
   }
 
+  [[nodiscard]] auto opaqueEndsMidLine() const -> bool {
+    if (lines_.empty() || !lines_.back().exact || lines_.back().text.empty()) {
+      return false;
+    }
+    const char last = lines_.back().text.back();
+    return last != '\n' && last != '\r';
+  }
+
   [[nodiscard]] auto build() const -> std::string {
     size_t size = 0;
     for (const auto& line : lines_) {
-      size += line.text.size() + line_ending_.size();
+      size +=
+          line.text.size() + (line.append_terminator ? line_ending_.size() : 0);
     }
 
     std::string output;
     output.reserve(size);
     for (const auto& line : lines_) {
       output.append(line.text);
-      output.append(line_ending_);
+      if (line.append_terminator) {
+        output.append(line_ending_);
+      }
     }
     return output;
   }
@@ -267,10 +298,15 @@ struct Indent {
     }
 
     if (!seen_newline) {
-      effect.inline_comments.push_back(TriviaEffect::InlineComment{
-          .spaces_before = std::move(pending_whitespace),
-          .text = text,
-      });
+      if (token.kind == slang::parsing::TokenKind::EndOfFile) {
+        state.appendToLastLine(pending_whitespace);
+        state.appendToLastLine(text);
+      } else {
+        effect.inline_comments.push_back(TriviaEffect::InlineComment{
+            .spaces_before = std::move(pending_whitespace),
+            .text = text,
+        });
+      }
       pending_whitespace.clear();
     } else {
       preserveBlankLines(newline_count, state);
@@ -285,13 +321,40 @@ struct Indent {
   return effect;
 }
 
-auto printLine(const UnwrappedLine<FormatToken>& line, PrintState& state)
-    -> void {
+auto printLine(const UnwrappedLine<FormatToken>& line, PrintState& state,
+               bool skip_first_trivia) -> void {
   if (line.tokens.empty()) {
     return;
   }
 
+  if (line.tokens.size() == 1 &&
+      line.tokens.front().token.kind == slang::parsing::TokenKind::EndOfFile) {
+    if (skip_first_trivia) {
+      return;
+    }
+    const Token& eof = line.tokens.front().token;
+    static_cast<void>(emitLeadingTrivia(
+        eof, Indent{.indent = 0, .trailing_comment_spaces = 0}, state));
+    state.finishLineIfNeeded();
+    bool has_comment = false;
+    std::string trailing_whitespace;
+    for (const Trivia& item : eof.trivia()) {
+      if (item.kind == TriviaKind::LineComment ||
+          item.kind == TriviaKind::BlockComment) {
+        has_comment = true;
+        trailing_whitespace.clear();
+      } else if (has_comment) {
+        trailing_whitespace.append(item.getRawText());
+      }
+    }
+    if (has_comment) {
+      state.appendOpaque(trailing_whitespace);
+    }
+    return;
+  }
+
   const size_t indent = line.indentation_spaces;
+  const bool resume_mid_line = skip_first_trivia && state.opaqueEndsMidLine();
   for (size_t i = 0; i < line.tokens.size(); ++i) {
     const FormatToken& ft = line.tokens.at(i);
     const InterTokenDecision decision =
@@ -302,17 +365,23 @@ auto printLine(const UnwrappedLine<FormatToken>& line, PrintState& state)
     const size_t tcs = (i == 0) ? ft.before.comment_spaces : 0;
 
     const TriviaEffect trivia =
-        emitLeadingTrivia(ft.token, Indent(indent, tcs), state);
+        (i == 0 && skip_first_trivia)
+            ? TriviaEffect{}
+            : emitLeadingTrivia(ft.token, Indent(indent, tcs), state);
 
     if (i == 0 || state.currentLineEmpty()) {
       state.finishLineIfNeeded();
-      state.ensureIndent(decision.action == TokenAction::kWrap
-                             ? decision.spaces_before
-                             : indent);
+      size_t next_indent = indent;
+      if (i == 0 && resume_mid_line) {
+        next_indent = 0;
+      } else if (decision.action == TokenAction::kWrap) {
+        next_indent = decision.spaces_before;
+      }
+      state.ensureIndent(next_indent);
     } else if (decision.action == TokenAction::kWrap) {
       state.finishLine();
       state.ensureIndent(decision.spaces_before);
-    } else {
+    } else if (trivia.inline_comments.empty()) {
       state.appendSpaces(decision.spaces_before);
     }
 
@@ -339,8 +408,15 @@ auto Printer::print(const std::vector<UnwrappedLine<FormatToken>>& lines,
                     std::ostream& os) const -> void {
   PrintState state(line_ending_);
 
+  bool after_opaque = false;
   for (const auto& line : lines) {
-    printLine(line, state);
+    if (line.is_opaque) {
+      state.appendOpaque(line.raw_text);
+      after_opaque = true;
+      continue;
+    }
+    printLine(line, state, after_opaque);
+    after_opaque = false;
   }
 
   os << state.build();
