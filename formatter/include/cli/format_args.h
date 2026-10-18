@@ -18,9 +18,8 @@ class FormatArgsBinder {
 
   void printFormatterHelp() const;
 
-  // Parses argc/argv. Unknown flags are not an error; for each one, a warning
-  // is written to err and parsing continues. An error in a known flag
-  // (e.g., --column_limit=abc) throws CLI::ParseError.
+  // Parses argc/argv using CLI11. Unknown options and invalid option values
+  // (e.g., --column_limit=abc) throw CLI::ParseError.
   void parse(int argc, char** argv);
 
   // Applies explicitly set command-line options on top of a style. Options
@@ -34,7 +33,8 @@ class FormatArgsBinder {
     return config_path_;
   }
 
-  // Anything that does not look like a flag is collected here by CLI11 itself.
+  // Returns positional file arguments collected by CLI11. Use -- before
+  // filenames starting with a dash.
   [[nodiscard]] auto files() const -> const std::vector<std::string>& {
     return files_;
   }
