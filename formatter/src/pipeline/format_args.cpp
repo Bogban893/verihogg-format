@@ -6,7 +6,6 @@
 #include <array>
 #include <span>
 #include <string>
-#include <utility>
 
 #include "data/format_style.h"
 
@@ -241,9 +240,8 @@ FormatArgsBinder::FormatArgsBinder() {
   add_negatable_flag(app_, "--wrap_end_else_clauses", wrap_end_else_clauses_,
                      "Place end and else clauses on separate lines");
 
-  // Positional "files". Tokens not starting with '-' are placed here by
-  // CLI11 itself — before attempts to match them with options, so there's
-  // no need to manually classify "file or unknown flag".
+  // Positional file arguments are collected by CLI11; -- allows filenames
+  // starting with a dash.
   app_.add_option("files", files_, "Source files to format")->type_name("FILE");
 }
 
