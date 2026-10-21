@@ -28,7 +28,7 @@ class RunnerCheckTest : public ::testing::Test {
   }
   void TearDown() override { fs::remove_all(dir_); }
 
-  auto makeFile(std::string_view name, std::string_view text) -> fs::path {
+  auto makeFile(const fs::path& name, std::string_view text) -> fs::path {
     const auto path = dir_ / name;
     std::ofstream out{path, std::ios::binary};
     out << text;
@@ -50,6 +50,11 @@ class RunnerCheckTest : public ::testing::Test {
                                 {.out = &out_, .err = &err_});
   }
 
+  [[nodiscard]] auto dir() const -> const fs::path& { return dir_; }
+  [[nodiscard]] auto out() const -> std::string { return out_.str(); }
+  [[nodiscard]] auto err() const -> std::string { return err_.str(); }
+
+ private:
   fs::path dir_;
   std::ostringstream out_;
   std::ostringstream err_;
@@ -59,14 +64,14 @@ TEST_F(RunnerCheckTest, ReportsDirtyAndMissingFilesInInputOrderWithoutWriting) {
   const std::string dirty = "module m; assign   a=b; endmodule";
   const auto clean = makeFile("clean.sv", formatted(dirty));
   const auto path = makeFile("dirty.sv", dirty);
-  const auto missing = dir_ / "missing.sv";
+  const auto missing = dir() / "missing.sv";
   const auto old_time = fs::last_write_time(path) - std::chrono::hours(1);
   fs::last_write_time(path, old_time);
 
   EXPECT_EQ(check({clean, path, missing}, {{}, {}, {}}), 2);
-  EXPECT_TRUE(out_.str().empty());
-  EXPECT_EQ(err_.str(), "Needs formatting: " + path.string() +
-                            "\nError: cannot read " + missing.string() + "\n");
+  EXPECT_TRUE(out().empty());
+  EXPECT_EQ(err(), "Needs formatting: " + path.string() +
+                       "\nError: cannot read " + missing.string() + "\n");
   std::ifstream in{path, std::ios::binary};
   const std::string after{std::istreambuf_iterator<char>{in},
                           std::istreambuf_iterator<char>{}};
@@ -83,8 +88,8 @@ TEST_F(RunnerCheckTest, UsesIndividualStylesForFiles) {
   const auto b = makeFile("b.sv", formatted(source, second));
 
   EXPECT_EQ(check({a, b}, {first, second}), 0);
-  EXPECT_TRUE(out_.str().empty());
-  EXPECT_TRUE(err_.str().empty());
+  EXPECT_TRUE(out().empty());
+  EXPECT_TRUE(err().empty());
   EXPECT_EQ(check({b}, {first}), 1);
 }
 
@@ -92,9 +97,9 @@ TEST_F(RunnerCheckTest, ReportsRecoveryWarnings) {
   const auto path = makeFile(
       "bad.sv", "module m;\n  assign y  = foo]bar;   // bad\nendmodule\n");
   check({path}, {{}});
-  EXPECT_TRUE(out_.str().empty());
-  EXPECT_NE(err_.str().find("invalid-annotation"), std::string::npos);
-  EXPECT_NE(err_.str().find(path.string()), std::string::npos);
+  EXPECT_TRUE(out().empty());
+  EXPECT_NE(err().find("invalid-annotation"), std::string::npos);
+  EXPECT_NE(err().find(path.string()), std::string::npos);
 }
 
 TEST_F(RunnerCheckTest, ManyFilesKeepIndividualStylesAndDiagnosticOrder) {
@@ -103,13 +108,15 @@ TEST_F(RunnerCheckTest, ManyFilesKeepIndividualStylesAndDiagnosticOrder) {
   std::vector<format::FormatStyle> styles;
   std::string expected;
   int failed = 0;
-  for (size_t i = 0; i < 64; ++i) {
+  constexpr size_t kFileCount = 64;
+  constexpr size_t kMissingInterval = 5;
+  for (size_t i = 0; i < kFileCount; ++i) {
     auto style = format::FormatStyle::defaults();
     style.indentation_spaces = i % 2 == 0 ? 2 : 4;
     styles.push_back(style);
     const auto name = "file" + std::to_string(i) + ".sv";
-    if (i % 5 == 0) {
-      files.push_back(dir_ / name);
+    if (i % kMissingInterval == 0) {
+      files.push_back(dir() / name);
       expected += "Error: cannot read " + files.back().string() + "\n";
       ++failed;
     } else if (i % 3 == 0) {
@@ -122,14 +129,14 @@ TEST_F(RunnerCheckTest, ManyFilesKeepIndividualStylesAndDiagnosticOrder) {
   }
 
   EXPECT_EQ(check(files, styles), failed);
-  EXPECT_TRUE(out_.str().empty());
-  EXPECT_EQ(err_.str(), expected);
+  EXPECT_TRUE(out().empty());
+  EXPECT_EQ(err(), expected);
 }
 
 TEST_F(RunnerCheckTest, EmptyInputHasNoDiagnostics) {
   EXPECT_EQ(check({}, {}), 0);
-  EXPECT_TRUE(out_.str().empty());
-  EXPECT_TRUE(err_.str().empty());
+  EXPECT_TRUE(out().empty());
+  EXPECT_TRUE(err().empty());
 }
 
 }  // namespace

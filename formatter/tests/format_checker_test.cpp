@@ -53,6 +53,9 @@ class FormatCheckerTest : public ::testing::Test {
     return format::format(tokens, style, ctx.source_text());
   }
 
+  [[nodiscard]] auto path() const -> const fs::path& { return path_; }
+
+ private:
   fs::path dir_;
   fs::path path_;
 };
@@ -60,12 +63,12 @@ class FormatCheckerTest : public ::testing::Test {
 TEST_F(FormatCheckerTest, DirtyFileIsNotModified) {
   const std::string source = "module m; assign   a=b; endmodule";
   write(source);
-  const auto old_time = fs::last_write_time(path_) - std::chrono::hours(1);
-  fs::last_write_time(path_, old_time);
+  const auto old_time = fs::last_write_time(path()) - std::chrono::hours(1);
+  fs::last_write_time(path(), old_time);
 
   EXPECT_EQ(check().status, format::CheckStatus::kDirty);
   EXPECT_EQ(read(), source);
-  EXPECT_EQ(fs::last_write_time(path_), old_time);
+  EXPECT_EQ(fs::last_write_time(path()), old_time);
 }
 
 TEST_F(FormatCheckerTest, FormattedFileIsClean) {
