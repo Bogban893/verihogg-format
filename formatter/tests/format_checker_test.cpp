@@ -19,16 +19,28 @@ namespace fs = std::filesystem;
 class FormatCheckerTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    const auto name =
-        "verihogg_checker_test_" +
-        std::to_string(
-            std::chrono::steady_clock::now().time_since_epoch().count());
-    dir_ = fs::temp_directory_path() / name;
-    ASSERT_TRUE(fs::create_directory(dir_));
+    const auto base =
+        fs::temp_directory_path() /
+        ("verihogg_checker_test_" +
+         std::to_string(
+             std::chrono::steady_clock::now().time_since_epoch().count()));
+    constexpr size_t kMaxAttempts = 128;
+    for (size_t attempt = 0; attempt < kMaxAttempts; ++attempt) {
+      const fs::path candidate = base.string() + "_" + std::to_string(attempt);
+      if (fs::create_directory(candidate)) {
+        dir_ = candidate;
+        break;
+      }
+    }
+    ASSERT_FALSE(dir_.empty()) << "Could not create a unique test directory";
     path_ = dir_ / "input.sv";
   }
 
-  void TearDown() override { fs::remove_all(dir_); }
+  void TearDown() override {
+    if (!dir_.empty()) {
+      fs::remove_all(dir_);
+    }
+  }
 
   void write(std::string_view text) const {
     std::ofstream out{path_, std::ios::binary};
