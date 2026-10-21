@@ -245,7 +245,8 @@ verihogg-format --check file.sv
 Check mode requires input files and uses the resolved configuration and CLI
 style overrides for each file. It prints diagnostics to stderr, writes nothing
 to stdout, and exits with 0 when all files match or 1 when a file needs
-formatting or cannot be read. Formatter warnings are also reported.
+formatting or cannot be read. Formatter warnings are also reported. Files are
+checked in parallel; diagnostics follow the input file order.
 
 ### Docker (recommended)
 

@@ -97,4 +97,39 @@ TEST_F(RunnerCheckTest, ReportsRecoveryWarnings) {
   EXPECT_NE(err_.str().find(path.string()), std::string::npos);
 }
 
+TEST_F(RunnerCheckTest, ManyFilesKeepIndividualStylesAndDiagnosticOrder) {
+  const std::string dirty = "module m; assign   a=b; endmodule";
+  std::vector<fs::path> files;
+  std::vector<format::FormatStyle> styles;
+  std::string expected;
+  int failed = 0;
+  for (size_t i = 0; i < 64; ++i) {
+    auto style = format::FormatStyle::defaults();
+    style.indentation_spaces = i % 2 == 0 ? 2 : 4;
+    styles.push_back(style);
+    const auto name = "file" + std::to_string(i) + ".sv";
+    if (i % 5 == 0) {
+      files.push_back(dir_ / name);
+      expected += "Error: cannot read " + files.back().string() + "\n";
+      ++failed;
+    } else if (i % 3 == 0) {
+      files.push_back(makeFile(name, dirty));
+      expected += "Needs formatting: " + files.back().string() + "\n";
+      ++failed;
+    } else {
+      files.push_back(makeFile(name, formatted(dirty, style)));
+    }
+  }
+
+  EXPECT_EQ(check(files, styles), failed);
+  EXPECT_TRUE(out_.str().empty());
+  EXPECT_EQ(err_.str(), expected);
+}
+
+TEST_F(RunnerCheckTest, EmptyInputHasNoDiagnostics) {
+  EXPECT_EQ(check({}, {}), 0);
+  EXPECT_TRUE(out_.str().empty());
+  EXPECT_TRUE(err_.str().empty());
+}
+
 }  // namespace
