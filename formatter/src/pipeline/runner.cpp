@@ -10,6 +10,7 @@
 #include "data/format_warning.h"
 #include "data/lex_context.h"
 #include "formatter.h"
+#include "pipeline/format_checker.h"
 
 namespace format {
 
@@ -38,6 +39,29 @@ auto printWarning(std::ostream& os, std::string_view path,
 auto runFormatter(gsl::span<const std::filesystem::path> files,
                   gsl::span<const FormatStyle> styles, const RunConfig& run,
                   Streams streams) -> int {
+  if (run.check) {
+    int failed = 0;
+    for (size_t i = 0; i < files.size(); ++i) {
+      const auto result = FormatChecker(styles[i]).checkFile(files[i]);
+      for (const auto& warning : result.warnings) {
+        printWarning(*streams.err, files[i].string(), warning);
+      }
+      switch (result.status) {
+        case CheckStatus::kClean:
+          break;
+        case CheckStatus::kDirty:
+          *streams.err << "Needs formatting: " << files[i].string() << "\n";
+          ++failed;
+          break;
+        case CheckStatus::kUnreadable:
+          *streams.err << "Error: cannot read " << files[i].string() << "\n";
+          ++failed;
+          break;
+      }
+    }
+    return failed;
+  }
+
   int warnings = 0;
   for (size_t i = 0; i < files.size(); ++i) {
     const auto& path = files[i];
