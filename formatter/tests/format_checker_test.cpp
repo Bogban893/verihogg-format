@@ -94,6 +94,11 @@ TEST_F(FormatCheckerTest, MissingFileIsUnreadable) {
   EXPECT_EQ(check().status, format::CheckStatus::kUnreadable);
 }
 
+TEST_F(FormatCheckerTest, DirectoryIsUnreadable) {
+  EXPECT_EQ(format::FormatChecker({}).checkFile(path().parent_path()).status,
+            format::CheckStatus::kUnreadable);
+}
+
 TEST_F(FormatCheckerTest, EmptyFileIsClean) {
   write("");
   EXPECT_EQ(check().status, format::CheckStatus::kClean);

@@ -93,6 +93,14 @@ TEST_F(RunnerCheckTest, ReportsDirtyAndMissingFilesInInputOrderWithoutWriting) {
   EXPECT_EQ(fs::last_write_time(path), old_time);
 }
 
+TEST_F(RunnerCheckTest, ReadErrorDoesNotAbortOtherChecks) {
+  const auto dirty = makeFile("dirty.sv", "module m; assign   a=b; endmodule");
+  EXPECT_EQ(check({dir(), dirty}, {{}, {}}), 2);
+  EXPECT_TRUE(out().empty());
+  EXPECT_EQ(err(), "Error: cannot read " + dir().string() +
+                       "\nNeeds formatting: " + dirty.string() + "\n");
+}
+
 TEST_F(RunnerCheckTest, UsesIndividualStylesForFiles) {
   const std::string source = "module m; assign a=b; endmodule";
   const auto first = format::FormatStyle::defaults();

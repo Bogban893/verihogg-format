@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <ios>
 #include <iterator>
 #include <string>
 #include <utility>
@@ -18,8 +19,13 @@ auto FormatChecker::checkFile(const fs::path& path) const -> CheckResult {
   if (!f) {
     return {.status = CheckStatus::kUnreadable};
   }
-  const std::string original{std::istreambuf_iterator<char>{f},
-                             std::istreambuf_iterator<char>{}};
+  std::string original;
+  try {
+    original.assign(std::istreambuf_iterator<char>{f},
+                    std::istreambuf_iterator<char>{});
+  } catch (const std::ios_base::failure&) {
+    return {.status = CheckStatus::kUnreadable};
+  }
 
   if (f.bad()) {
     return {.status = CheckStatus::kUnreadable};
