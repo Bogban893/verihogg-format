@@ -83,6 +83,7 @@ enum class Context : uint8_t {
   kPortList,
   kParameterList,
   kExpression,
+  kIndex,
   kInstancePorts,
   kConcatenation,
   kCaseBody,
@@ -284,7 +285,8 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
         continue;
 
       case TK::Colon:
-        ft.type = TokenType::kColon;
+        ft.type = (ctx.top() == Context::kIndex) ? TokenType::kRangeColon
+                                                 : TokenType::kColon;
         continue;
 
       case TK::Comma:
@@ -375,7 +377,8 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
       case TK::Slash:
       case TK::Percent:
       case TK::DoubleStar:
-        ft.type = TokenType::kBinaryOperator;
+        ft.type = (ctx.top() == Context::kIndex) ? TokenType::kIndexedOperator
+                                                 : TokenType::kBinaryOperator;
         continue;
 
       // -- Potentially unary -------------------------------------------
@@ -386,8 +389,12 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
       case TK::Or:
       case TK::Xor:
       case TK::XorTilde:
-        ft.type = isOperand(prev_kind) ? TokenType::kBinaryOperator
-                                       : TokenType::kUnaryOperator;
+        if (ctx.top() == Context::kIndex) {
+          ft.type = TokenType::kIndexedOperator;
+        } else {
+          ft.type = isOperand(prev_kind) ? TokenType::kBinaryOperator
+                                         : TokenType::kUnaryOperator;
+        }
         continue;
 
       // -- Unambiguously unary ---------------------------------------------
@@ -421,7 +428,7 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
 
       case TK::OpenBracket:
         ft.type = TokenType::kGeneric;
-        ctx.push(Context::kExpression);
+        ctx.push(Context::kIndex);
         continue;
 
       case TK::CloseBracket:
@@ -620,6 +627,13 @@ auto implSpacesRequired(TokenPair p) -> size_t {
   if (left.type == TokenType::kAtSign) {
     return 0;
   }
+  // Inside [...]: no spaces around ':' or operators.
+  if (right.type == TokenType::kRangeColon ||
+      left.type == TokenType::kRangeColon ||
+      right.type == TokenType::kIndexedOperator ||
+      left.type == TokenType::kIndexedOperator) {
+    return 0;
+  }
   return 1;
 }
 
@@ -689,6 +703,12 @@ auto implBreakDecision(TokenPair p) -> BreakDecision {
     return BreakDecision::kMustBreak;
   }
   if (left.type == TokenType::kAssignKeyword) {
+    return BreakDecision::kMustNotBreak;
+  }
+  if (right.type == TokenType::kRangeColon ||
+      left.type == TokenType::kRangeColon ||
+      right.type == TokenType::kIndexedOperator ||
+      left.type == TokenType::kIndexedOperator) {
     return BreakDecision::kMustNotBreak;
   }
   return BreakDecision::kUndecided;
