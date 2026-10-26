@@ -843,6 +843,12 @@ class SVParser {
   }
 
   auto parseIndentedStatement() -> void {
+    if (at(TK::BeginKeyword) && !lines_.empty()) {
+      line_ = std::move(lines_.back());
+      lines_.pop_back();
+      parseStatement();
+      return;
+    }
     const size_t stack_size_before = block_stack_.size();
     ++indent_level_;
     parseStatement();
@@ -1346,6 +1352,12 @@ class SVParser {
     parseIndentedStatement();
 
     if (at(TK::ElseKeyword)) {
+      if (!style_.get().wrap_end_else_clauses && !lines_.empty() &&
+          !lines_.back().tokens.empty() && lines_.back().tokens.size() == 1 &&
+          lines_.back().tokens.front().kind == TK::EndKeyword) {
+        line_ = std::move(lines_.back());
+        lines_.pop_back();
+      }
       consumeInto(line_);  // else
       if (at(TK::IfKeyword)) {
         // else if: `if (...)` is added into the same line_ that already has

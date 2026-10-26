@@ -675,6 +675,13 @@ auto implBreakDecision(TokenPair p) -> BreakDecision {
       right.type != TokenType::kColon) {
     return BreakDecision::kMustBreak;
   }
+  if (isBlockEnd(left.type) && right.type == TokenType::kColon) {
+    return BreakDecision::kMustNotBreak;
+  }
+  if (left.type == TokenType::kEndKeyword &&
+      right.type == TokenType::kElseKeyword) {
+    return BreakDecision::kMustNotBreak;
+  }
   if (isBlockEnd(right.type) || isBlockEnd(left.type)) {
     return BreakDecision::kMustBreak;
   }
