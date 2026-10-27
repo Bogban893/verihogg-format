@@ -20,6 +20,7 @@ find_package(Microsoft.GSL CONFIG REQUIRED)
 
 find_package(CLI11 CONFIG REQUIRED)
 find_package(Threads REQUIRED)
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
 find_package(yaml-cpp CONFIG REQUIRED)
 find_package(valijson CONFIG REQUIRED)
@@ -67,7 +68,7 @@ target_include_directories(${PROJECT_NAME}
   PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/formatter/include>
 )
-target_link_libraries(${PROJECT_NAME} PRIVATE slang::slang Microsoft.GSL::GSL CLI11::CLI11 Threads::Threads yaml-cpp::yaml-cpp ${VHG_VALIJSON_TARGET})
+target_link_libraries(${PROJECT_NAME} PRIVATE slang::slang Microsoft.GSL::GSL CLI11::CLI11 Threads::Threads OpenSSL::Crypto yaml-cpp::yaml-cpp ${VHG_VALIJSON_TARGET})
 
 if(MSVC)
   target_compile_options(${PROJECT_NAME} PRIVATE /W4 /bigobj)
@@ -105,7 +106,7 @@ if(GTest_FOUND)
   target_include_directories(verihogg-format-lib PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/formatter/include>)
   target_link_libraries(verihogg-format-lib PUBLIC slang::slang CLI11::CLI11 Threads::Threads)
-  target_link_libraries(verihogg-format-lib PRIVATE yaml-cpp::yaml-cpp ${VHG_VALIJSON_TARGET})
+  target_link_libraries(verihogg-format-lib PRIVATE OpenSSL::Crypto yaml-cpp::yaml-cpp ${VHG_VALIJSON_TARGET})
 
   file(GLOB_RECURSE TEST_SRC CONFIGURE_DEPENDS formatter/tests/*.cpp)
 
