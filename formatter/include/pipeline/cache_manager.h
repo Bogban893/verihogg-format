@@ -12,7 +12,7 @@ class CacheManager {
  public:
   explicit CacheManager(std::filesystem::path directory);
 
-  // Missing, malformed and unreadable records are cache misses.
+  // Missing, malformed, non-regular and unreadable records are cache misses.
   [[nodiscard]] auto contains(std::string_view key) const -> bool;
 
   // Publishes a complete record atomically. Returns false on I/O errors or

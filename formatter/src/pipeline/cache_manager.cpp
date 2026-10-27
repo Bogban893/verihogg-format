@@ -57,7 +57,12 @@ auto CacheManager::contains(std::string_view key) const -> bool {
   if (!validKey(key)) {
     return false;
   }
-  std::ifstream in{directory_ / key, std::ios::binary};
+  const auto entry = directory_ / key;
+  std::error_code ec;
+  if (!fs::is_regular_file(entry, ec)) {
+    return false;
+  }
+  std::ifstream in{entry, std::ios::binary};
   if (!in) {
     return false;
   }

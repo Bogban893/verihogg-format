@@ -385,6 +385,11 @@ auto FormatArgsBinder::buildRunConfig() const -> RunConfig {
   return run;
 }
 
-void FormatArgsBinder::parse(int argc, char** argv) { app_.parse(argc, argv); }
+void FormatArgsBinder::parse(int argc, char** argv) {
+  app_.parse(argc, argv);
+  if (cache_directory_.has_value() && !check_.value_or(false)) {
+    throw CLI::ValidationError("--cache", "requires --check to be enabled");
+  }
+}
 
 }  // namespace format

@@ -153,6 +153,10 @@ TEST_F(FormatArgsTest, CacheAcceptsExplicitDirectory) {
 
 TEST_F(FormatArgsTest, CacheRequiresCheck) { EXPECT_FALSE(parse({"--cache"})); }
 
+TEST_F(FormatArgsTest, CacheRejectsExplicitlyDisabledCheck) {
+  EXPECT_FALSE(parse({"--check=false", "--cache"}));
+}
+
 TEST_F(FormatArgsTest, CacheIsDisabledByDefault) {
   const auto [style, run] = buildStyle({"--check"});
   EXPECT_FALSE(run.cache_directory.has_value());

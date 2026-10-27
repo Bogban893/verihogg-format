@@ -2,6 +2,10 @@
 
 #include <gtest/gtest.h>
 
+#if defined(__linux__)
+#include <sys/stat.h>
+#endif
+
 #include <atomic>
 #include <chrono>
 #include <filesystem>
@@ -76,6 +80,29 @@ TEST_F(CacheManagerTest, InvalidKeysCannotEscapeCacheDirectory) {
   }
   EXPECT_FALSE(fs::exists(directory()));
 }
+
+#if defined(__linux__)
+TEST_F(CacheManagerTest, FifoRecordIsNotReadAndCanBeReplaced) {
+  const format::CacheManager cache(directory());
+  const auto key = format::sha256("source");
+  const auto entry = directory() / key;
+  fs::create_directories(directory());
+  ASSERT_EQ(mkfifo(entry.c_str(), S_IRUSR | S_IWUSR), 0);
+  // Keep both ends open and provide enough bytes for a record-sized read.
+  // Consuming the FIFO changes its first byte and fails without hanging.
+  std::fstream fifo{entry, std::ios::in | std::ios::out | std::ios::binary};
+  ASSERT_TRUE(fifo.good());
+  constexpr size_t kPayloadSize = 256;
+  fifo << 'a' << std::string(kPayloadSize, 'b');
+  fifo.flush();
+  ASSERT_TRUE(fifo.good());
+  EXPECT_FALSE(cache.contains(key));
+  EXPECT_EQ(fifo.get(), 'a');
+  ASSERT_TRUE(cache.store(key));
+  EXPECT_TRUE(fs::is_regular_file(entry));
+  EXPECT_TRUE(cache.contains(key));
+}
+#endif
 
 TEST_F(CacheManagerTest, CorruptRecordIsMissAndCanBeReplaced) {
   const format::CacheManager cache(directory());
