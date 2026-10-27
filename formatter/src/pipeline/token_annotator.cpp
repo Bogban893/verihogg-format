@@ -634,6 +634,18 @@ auto implSpacesRequired(TokenPair p) -> size_t {
       left.type == TokenType::kIndexedOperator) {
     return 0;
   }
+  if (right.token.kind == TK::OpenBracket &&
+      (left.token.kind == TK::Identifier ||
+       left.token.kind == TK::SystemIdentifier ||
+       left.token.kind == TK::CloseBracket ||
+       left.token.kind == TK::CloseParenthesis)) {
+    return 0;
+  }
+  if (right.token.kind == TK::OpenParenthesis &&
+      (left.token.kind == TK::Identifier ||
+       left.token.kind == TK::SystemIdentifier)) {
+    return 0;
+  }
   return 1;
 }
 
