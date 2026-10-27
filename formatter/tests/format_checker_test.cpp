@@ -11,6 +11,9 @@
 
 #include "data/lex_context.h"
 #include "formatter.h"
+#include "pipeline/cache_build_id.h"
+#include "pipeline/cache_key.h"
+#include "pipeline/cache_manager.h"
 
 namespace {
 
@@ -66,6 +69,17 @@ class FormatCheckerTest : public ::testing::Test {
   }
 
   [[nodiscard]] auto path() const -> const fs::path& { return path_; }
+
+  [[nodiscard]] auto cacheDirectory() const -> fs::path {
+    return path_.parent_path() / "cache";
+  }
+
+  auto checkCached(format::FormatStyle style = {},
+                   std::string_view build_id = "test-build") const
+      -> format::CheckResult {
+    const format::CacheManager cache(cacheDirectory());
+    return format::FormatChecker(style).checkFile(path_, &cache, build_id);
+  }
 
  private:
   fs::path dir_;
@@ -129,6 +143,127 @@ TEST_F(FormatCheckerTest, PreservesRecoveryWarnings) {
   EXPECT_EQ(result.warnings.front().code, expected.warnings.front().code);
   EXPECT_EQ(result.warnings.front().message, expected.warnings.front().message);
   EXPECT_EQ(read(), source);
+}
+
+TEST_F(FormatCheckerTest, CleanFileIsCachedOnSecondCheck) {
+  write(formatted("module m; assign a=b; endmodule").formatted_text);
+  const auto first = checkCached();
+  EXPECT_EQ(first.status, format::CheckStatus::kClean);
+  EXPECT_FALSE(first.cache_hit);
+  EXPECT_FALSE(first.cache_error);
+  const auto second = checkCached();
+  EXPECT_EQ(second.status, format::CheckStatus::kClean);
+  EXPECT_TRUE(second.cache_hit);
+  EXPECT_FALSE(second.cache_error);
+}
+
+TEST_F(FormatCheckerTest, CacheDetectsChangedContentWithSameSizeAndMtime) {
+  const auto clean =
+      formatted("module m; assign a=b; endmodule").formatted_text;
+  write(clean);
+  ASSERT_EQ(checkCached().status, format::CheckStatus::kClean);
+  ASSERT_TRUE(checkCached().cache_hit);
+  const auto mtime = fs::last_write_time(path());
+  auto dirty = clean;
+  const auto pos = dirty.find("a = b;");
+  ASSERT_NE(pos, std::string::npos);
+  dirty.replace(pos, std::string_view("a = b;").size(), "a =b ;");
+  ASSERT_EQ(dirty.size(), clean.size());
+  write(dirty);
+  fs::last_write_time(path(), mtime);
+  const auto result = checkCached();
+  EXPECT_EQ(result.status, format::CheckStatus::kDirty);
+  EXPECT_FALSE(result.cache_hit);
+}
+
+TEST_F(FormatCheckerTest, ChangedStyleAndBuildInvalidateCache) {
+  auto style = format::FormatStyle::defaults();
+  style.indentation_spaces = 4;
+  write(formatted("module m; assign a=b; endmodule", style).formatted_text);
+  ASSERT_EQ(checkCached(style).status, format::CheckStatus::kClean);
+  ASSERT_TRUE(checkCached(style).cache_hit);
+  const auto changed_style = checkCached();
+  EXPECT_EQ(changed_style.status, format::CheckStatus::kDirty);
+  EXPECT_FALSE(changed_style.cache_hit);
+  const auto changed_build = checkCached(style, "another-build");
+  EXPECT_EQ(changed_build.status, format::CheckStatus::kClean);
+  EXPECT_FALSE(changed_build.cache_hit);
+  EXPECT_TRUE(checkCached(style, "another-build").cache_hit);
+}
+
+TEST_F(FormatCheckerTest, DirtyFilesAndWarningsAreNotCached) {
+  write("module m; assign   a=b; endmodule");
+  EXPECT_EQ(checkCached().status, format::CheckStatus::kDirty);
+  EXPECT_FALSE(checkCached().cache_hit);
+  EXPECT_FALSE(fs::exists(cacheDirectory()));
+  write(formatted("module m;\n  assign y  = foo]bar;   // bad\nendmodule\n")
+            .formatted_text);
+  const auto first = checkCached();
+  ASSERT_FALSE(first.warnings.empty());
+  const auto second = checkCached();
+  EXPECT_FALSE(second.cache_hit);
+  EXPECT_EQ(second.warnings.size(), first.warnings.size());
+  EXPECT_FALSE(fs::exists(cacheDirectory()));
+}
+
+TEST_F(FormatCheckerTest, CacheFailureDoesNotFailCleanCheck) {
+  write(formatted("module m; endmodule").formatted_text);
+  {
+    std::ofstream out{cacheDirectory()};
+    out << "not a directory";
+  }
+  const auto result = checkCached();
+  EXPECT_EQ(result.status, format::CheckStatus::kClean);
+  EXPECT_FALSE(result.cache_hit);
+  EXPECT_TRUE(result.cache_error);
+}
+
+TEST_F(FormatCheckerTest, CorruptRecordIsRecheckedAndReplaced) {
+  write(formatted("module m; endmodule").formatted_text);
+  ASSERT_EQ(checkCached().status, format::CheckStatus::kClean);
+  ASSERT_TRUE(checkCached().cache_hit);
+  for (const auto& entry : fs::directory_iterator(cacheDirectory())) {
+    std::ofstream out{entry.path(), std::ios::binary | std::ios::trunc};
+    out << "corrupted";
+  }
+  const auto result = checkCached();
+  EXPECT_EQ(result.status, format::CheckStatus::kClean);
+  EXPECT_FALSE(result.cache_hit);
+  EXPECT_FALSE(result.cache_error);
+  EXPECT_TRUE(checkCached().cache_hit);
+}
+
+TEST_F(FormatCheckerTest, MissingBuildIdentityDisablesCache) {
+  write(formatted("module m; endmodule").formatted_text);
+  const auto result = checkCached({}, "");
+  EXPECT_EQ(result.status, format::CheckStatus::kClean);
+  EXPECT_FALSE(result.cache_hit);
+  EXPECT_TRUE(result.cache_error);
+  EXPECT_FALSE(fs::exists(cacheDirectory()));
+}
+
+TEST_F(FormatCheckerTest, StreamingHashReadsAllBytes) {
+  constexpr size_t kContentSize = 131073;
+  std::string contents(kContentSize, 'x');
+  contents.at(contents.size() / 2) = '\0';
+  write(contents);
+  EXPECT_EQ(format::sha256File(path()), format::sha256(contents));
+  contents.back() = 'y';
+  write(contents);
+  EXPECT_EQ(format::sha256File(path()), format::sha256(contents));
+  EXPECT_FALSE(format::sha256File(path().parent_path()).has_value());
+  EXPECT_FALSE(format::sha256File(path().parent_path() / "absent").has_value());
+}
+
+TEST(CacheBuildIdTest, IdentityIsStableWithinProcess) {
+  const auto& identity = format::formatterBuildId();
+#if defined(__linux__)
+  ASSERT_TRUE(identity.has_value());
+  EXPECT_EQ(identity.value_or("").size(), format::sha256("").size());
+  EXPECT_EQ(format::formatterBuildId(), identity);
+#else
+  EXPECT_FALSE(identity.has_value());
+#endif
 }
 
 }  // namespace

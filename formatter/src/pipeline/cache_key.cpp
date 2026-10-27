@@ -5,6 +5,9 @@
 #include <array>
 #include <cstdint>
 #include <format>
+#include <fstream>
+#include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -80,6 +83,43 @@ auto sha256(std::string_view contents) -> std::string {
   if (EVP_Digest(contents.data(), contents.size(), digest.data(), &length,
                  EVP_sha256(), nullptr) != 1) {
     throw std::runtime_error("Cannot compute cache SHA-256 digest");
+  }
+  std::string result;
+  for (unsigned int i = 0; i < length; ++i) {
+    result += std::format("{:02x}", digest.at(i));
+  }
+  return result;
+}
+
+auto sha256File(const std::filesystem::path& path)
+    -> std::optional<std::string> {
+  std::ifstream in{path, std::ios::binary};
+  if (!in) {
+    return std::nullopt;
+  }
+  const std::unique_ptr<EVP_MD_CTX, decltype(&EVP_MD_CTX_free)> context(
+      EVP_MD_CTX_new(), EVP_MD_CTX_free);
+  if (!context ||
+      EVP_DigestInit_ex(context.get(), EVP_sha256(), nullptr) != 1) {
+    return std::nullopt;
+  }
+  constexpr size_t kBufferSize = 65536;
+  std::array<char, kBufferSize> buffer{};
+  while (in) {
+    in.read(buffer.data(), static_cast<std::streamsize>(buffer.size()));
+    if (in.gcount() > 0 &&
+        EVP_DigestUpdate(context.get(), buffer.data(),
+                         static_cast<size_t>(in.gcount())) != 1) {
+      return std::nullopt;
+    }
+  }
+  if (in.bad() || !in.eof()) {
+    return std::nullopt;
+  }
+  std::array<unsigned char, EVP_MAX_MD_SIZE> digest{};
+  unsigned int length = 0;
+  if (EVP_DigestFinal_ex(context.get(), digest.data(), &length) != 1) {
+    return std::nullopt;
   }
   std::string result;
   for (unsigned int i = 0; i < length; ++i) {

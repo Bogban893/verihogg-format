@@ -115,6 +115,7 @@ docker run --rm -v "$(pwd)":/data -w /data \
 
 | Option                              | Description                                                    |
 | ----------------------------------- | -------------------------------------------------------------- |
+| `--cache[=<directory>]` | Cache successful checks; requires `--check`. Default: `.verihogg-format-cache`. |
 | `--check`                         | Check formatting without writing files; incompatible with `--inplace`. |
 | `-n, --inplace`                     | Overwrite source files instead of printing to stdout.          |
 | `-c, --column_limit N`              | Maximum line length (default: `100`).                          |
@@ -247,6 +248,30 @@ style overrides for each file. It prints diagnostics to stderr, writes nothing
 to stdout, and exits with 0 when all files match or 1 when a file needs
 formatting or cannot be read. Formatter warnings are also reported. Files are
 checked in parallel; diagnostics follow the input file order.
+
+### Cache for repeated checks
+
+```bash
+verihogg-format --check --cache file.sv
+verihogg-format --check --cache=/path/to/cache file.sv
+```
+
+Only clean files without warnings are cached. Each run still reads source bytes
+and resolves configuration; a matching SHA-256 key skips lexing and formatting.
+The key includes file contents, all resolved style fields, and the formatter
+build identity. File timestamps are not used to trust unchanged contents.
+
+On Linux, the build identity hashes the executable and loaded libraries once
+per process. Caching is disabled if that identity cannot be determined or on
+unsupported platforms. Cache failures do not fail checks: unreadable or corrupt
+records are misses, and failed writes produce warnings. Diagnostics remain in
+input file order. `--cache` does not consume the next filename; use `=` to set
+its directory.
+
+Records are stored independently and published atomically, allowing concurrent
+runs to share a cache directory. There is no automatic eviction yet; remove the
+cache directory to reclaim disk space. The cache is a local optimization and
+should only be shared with trusted writers.
 
 ### Docker (recommended)
 

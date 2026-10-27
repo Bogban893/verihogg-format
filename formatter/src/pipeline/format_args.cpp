@@ -67,6 +67,8 @@ Formatting options:
       --config <path>                  Load configuration from a YAML file
   -n, --inplace                        Overwrite source files instead of stdout
       --check                          Check formatting without rewriting files
+      --cache[=<directory>]            Cache successful checks (requires --check)
+                                       Default: .verihogg-format-cache
 
 The style options below are reserved and do not affect formatting yet.
 Line-wrap search currently always runs, regardless of --try_wrap_long_lines.
@@ -104,7 +106,7 @@ Boolean options (use --no_<name> to disable):
       --try_wrap_long_lines
       --wrap_end_else_clauses
 
-Every option above mirrors a key of the YAML configuration file.
+Style options mirror keys of the YAML configuration file.
 )");
 }
 
@@ -137,8 +139,14 @@ FormatArgsBinder::FormatArgsBinder() {
   auto* inplace = app_.add_flag(
       "-n,--inplace", inplace_,
       "Overwrite the source files instead of outputting to stdout");
-  app_.add_flag("--check", check_, "Check formatting without rewriting files")
-      ->excludes(inplace);
+  auto* check = app_.add_flag("--check", check_,
+                              "Check formatting without rewriting files")
+                    ->excludes(inplace);
+  // Keep following positional filenames separate from an optional cache path.
+  app_.add_flag(
+          "--cache{.verihogg-format-cache}", cache_directory_,
+          "Cache successful checks; use --cache=<directory> for a custom path")
+      ->needs(check);
 
   app_.add_option("--config", config_path_,
                   "Load configuration from a YAML file");
@@ -373,6 +381,7 @@ auto FormatArgsBinder::buildRunConfig() const -> RunConfig {
   if (check_.has_value()) {
     run.check = *check_;
   }
+  run.cache_directory = cache_directory_;
   return run;
 }
 

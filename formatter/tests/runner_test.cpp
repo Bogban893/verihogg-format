@@ -13,6 +13,7 @@
 
 #include "data/lex_context.h"
 #include "formatter.h"
+#include "pipeline/cache_build_id.h"
 
 namespace {
 namespace fs = std::filesystem;
@@ -57,9 +58,13 @@ class RunnerCheckTest : public ::testing::Test {
   }
 
   auto check(const std::vector<fs::path>& files,
-             const std::vector<format::FormatStyle>& styles) -> int {
+             const std::vector<format::FormatStyle>& styles,
+             bool use_cache = false) -> int {
     format::RunConfig run;
     run.check = true;
+    if (use_cache) {
+      run.cache_directory = (dir_ / "cache").string();
+    }
     return format::runFormatter(files, styles, run,
                                 {.out = &out_, .err = &err_});
   }
@@ -159,6 +164,34 @@ TEST_F(RunnerCheckTest, EmptyInputHasNoDiagnostics) {
   EXPECT_EQ(check({}, {}), 0);
   EXPECT_TRUE(out().empty());
   EXPECT_TRUE(err().empty());
+}
+
+TEST_F(RunnerCheckTest, CachedChecksKeepPerFileStylesAndDiagnostics) {
+  if (!format::formatterBuildId()) {
+    GTEST_SKIP() << "Build identity is unavailable on this platform";
+  }
+  const std::string source = "module m; assign a=b; endmodule";
+  auto style = format::FormatStyle::defaults();
+  style.indentation_spaces = 4;
+  const auto clean = makeFile("clean.sv", formatted(source, style));
+  const auto dirty = makeFile("dirty.sv", source);
+  EXPECT_EQ(check({clean, dirty}, {style, {}}, true), 1);
+  const auto expected = "Needs formatting: " + dirty.string() + "\n";
+  EXPECT_EQ(err(), expected);
+  EXPECT_EQ(check({clean, dirty}, {style, {}}, true), 1);
+  EXPECT_EQ(err(), expected + expected);
+  EXPECT_TRUE(out().empty());
+}
+
+TEST_F(RunnerCheckTest, CacheWriteFailureIsOnlyWarning) {
+  if (!format::formatterBuildId()) {
+    GTEST_SKIP() << "Build identity is unavailable on this platform";
+  }
+  makeFile("cache", "not a directory");
+  const auto clean = makeFile("clean.sv", formatted("module m; endmodule"));
+  EXPECT_EQ(check({clean}, {{}}, true), 0);
+  EXPECT_NE(err().find("Warning: cannot use cache"), std::string::npos);
+  EXPECT_TRUE(out().empty());
 }
 
 }  // namespace
