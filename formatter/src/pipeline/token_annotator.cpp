@@ -391,6 +391,9 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
       case TK::XorTilde:
         if (ctx.top() == Context::kIndex) {
           ft.type = TokenType::kIndexedOperator;
+        } else if (prev_kind == TK::Unknown &&
+                   (kind == TK::And || kind == TK::Or || kind == TK::Xor)) {
+          ft.type = TokenType::kBinaryOperator;
         } else {
           ft.type = isOperand(prev_kind) ? TokenType::kBinaryOperator
                                          : TokenType::kUnaryOperator;
