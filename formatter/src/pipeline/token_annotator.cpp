@@ -445,6 +445,12 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
 
       case TK::OpenBrace:
         ft.type = TokenType::kGeneric;
+        if (ctx.top() == Context::kConcatenation &&
+            (prev_kind == TK::IntegerLiteral || prev_kind == TK::Identifier ||
+             prev_kind == TK::CloseParenthesis ||
+             prev_type == TokenType::kMacroUsage)) {
+          ft.type = TokenType::kReplicationOpenBrace;
+        }
         ctx.push(Context::kConcatenation);
         continue;
 
@@ -558,9 +564,9 @@ auto implSpacesRequired(TokenPair p) -> size_t {
     return 1;
   }
 
-  if (rk == TK::IntegerBase) {
+  if (rk == TK::IntegerBase && lk == TK::IntegerLiteral) {
     return 0;
-  }  // "2" + "'b" → "2'b"
+  }  // "2" + "'b" → "2'b" — only with sized literal (not == 'b1)
   if (lk == TK::IntegerBase) {
     return 0;
   }  // "'b" + "00" → "'b00"
@@ -573,8 +579,8 @@ auto implSpacesRequired(TokenPair p) -> size_t {
   }
 
   if (rk == TK::ApostropheOpenBrace) {
-    return 0;
-  }  // "logic" + "'{"
+    return 1;  // = '{, <= '{, , '{, return '{ — space before assignment pattern
+  }
   if (lk == TK::ApostropheOpenBrace) {
     return 0;
   }  // "'{" + "..."
@@ -653,6 +659,9 @@ auto implSpacesRequired(TokenPair p) -> size_t {
        left.token.kind == TK::SystemIdentifier ||
        left.type == TokenType::kMacroUsage)) {
     return 0;
+  }
+  if (right.type == TokenType::kReplicationOpenBrace) {
+    return 0;  // {N{...}}, {$bits(...){...}}
   }
   return 1;
 }

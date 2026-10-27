@@ -46,8 +46,9 @@ enum class TokenType : uint8_t {
   // Delimiters
   kSemicolon,
   kColon,
-  kRangeColon,      // ':' in [...]
-  kIndexedOperator, // -, +, *, /, ... in [...]
+  kRangeColon,           // ':' in [...]
+  kReplicationOpenBrace, // '{' in {N{...}}
+  kIndexedOperator,      // -, +, *, /, ... in [...]
   kComma,
   kDot,
   kHash,
