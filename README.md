@@ -328,6 +328,7 @@ If you are not using Nix, install the following dependencies manually:
 - CMake 3.20+
 - [slang](https://github.com/MikePopoloski/slang) — SystemVerilog parser
 - [CLI11](https://github.com/CLIUtils/CLI11) — command-line parser
+- [OpenSSL](https://www.openssl.org/) — SHA-256 cache keys (libcrypto)
 - [yaml-cpp](https://github.com/jbeder/yaml-cpp) — YAML parser (configuration files)
 - [valijson](https://github.com/tristanpenman/valijson) — JSON Schema validation (configuration files)
 - [Microsoft GSL](https://github.com/microsoft/GSL) — Guidelines Support Library
