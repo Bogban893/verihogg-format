@@ -564,9 +564,11 @@ auto implSpacesRequired(TokenPair p) -> size_t {
     return 1;
   }
 
-  if (rk == TK::IntegerBase && lk == TK::IntegerLiteral) {
+  if (rk == TK::IntegerBase &&
+      (lk == TK::IntegerLiteral || left.type == TokenType::kMacroUsage)) {
     return 0;
-  }  // "2" + "'b" → "2'b" — only with sized literal (not == 'b1)
+  }  // "2" + "'b" → "2'b", "`XLEN" + "'h" → "`XLEN'h"
+
   if (lk == TK::IntegerBase) {
     return 0;
   }  // "'b" + "00" → "'b00"
