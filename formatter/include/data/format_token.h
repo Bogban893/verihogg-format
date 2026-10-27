@@ -95,7 +95,8 @@ enum class TokenType : uint8_t {
   kIntegerBase,
   kEdgeKeyword,
   kAssignKeyword,
-  kDirective,
+  kDirective,      // `ifdef, `define, `include — compiler directive
+  kMacroUsage,     // `SCR1_XLEN, `Width — macro invocation (operand)
   kTernaryOperator,
   kSvaBinaryOperator,
   kSvaKeyword

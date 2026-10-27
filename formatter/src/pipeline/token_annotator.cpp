@@ -394,9 +394,11 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
         } else if (prev_kind == TK::Unknown &&
                    (kind == TK::And || kind == TK::Or || kind == TK::Xor)) {
           ft.type = TokenType::kBinaryOperator;
+        } else if (prev_type == TokenType::kMacroUsage ||
+                   isOperand(prev_kind)) {
+          ft.type = TokenType::kBinaryOperator;
         } else {
-          ft.type = isOperand(prev_kind) ? TokenType::kBinaryOperator
-                                         : TokenType::kUnaryOperator;
+          ft.type = TokenType::kUnaryOperator;
         }
         continue;
 
@@ -499,7 +501,8 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
         continue;
 
       case TK::Directive:
-        ft.type = TokenType::kDirective;
+        ft.type = isCompilerDirective(ft.token) ? TokenType::kDirective
+                                                : TokenType::kMacroUsage;
         continue;
 
       case TK::OrMinusArrow:  // |->
@@ -595,6 +598,7 @@ auto implSpacesRequired(TokenPair p) -> size_t {
 
   if (right.token.kind == TK::Apostrophe &&
       (left.token.kind == TK::Identifier || left.type == TokenType::kTypeName ||
+       left.type == TokenType::kMacroUsage ||
        left.token.kind == TK::IntegerLiteral)) {
     return 0;  // type'(...) for cast
   }
@@ -646,7 +650,8 @@ auto implSpacesRequired(TokenPair p) -> size_t {
   }
   if (right.token.kind == TK::OpenParenthesis &&
       (left.token.kind == TK::Identifier ||
-       left.token.kind == TK::SystemIdentifier)) {
+       left.token.kind == TK::SystemIdentifier ||
+       left.type == TokenType::kMacroUsage)) {
     return 0;
   }
   return 1;
@@ -694,7 +699,7 @@ auto implBreakDecision(TokenPair p) -> BreakDecision {
   if (implSpacesRequired(p) == 0 && right.balancing != GroupBalancing::kClose) {
     return BreakDecision::kMustNotBreak;
   }
-  if (right.type == TokenType::kDirective && isCompilerDirective(right.token)) {
+  if (right.type == TokenType::kDirective) {
     return BreakDecision::kMustBreak;
   }
   if (left.type == TokenType::kDirective) {
