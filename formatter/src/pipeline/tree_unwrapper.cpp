@@ -481,7 +481,8 @@ class SVParser {
     lines_.push_back(
         Line{.tokens = {},
              .raw_text = std::string(source_.substr(begin, end - begin)),
-             .is_opaque = true});
+             .is_opaque = true,
+             .case_label_colon = std::nullopt});
     preserved_source_end_ = end;
   }
 
@@ -1405,6 +1406,7 @@ class SVParser {
       consumeInto(line_);
       if (at(TK::Colon)) {
         consumeInto(line_);
+        line_.case_label_colon = line_.tokens.size() - 1;
       }
     } else {
       while (!at(TK::Colon) && !at(TK::Directive) && !at(TK::EndOfFile) &&
@@ -1413,6 +1415,7 @@ class SVParser {
       }
       if (at(TK::Colon)) {
         consumeInto(line_);
+        line_.case_label_colon = line_.tokens.size() - 1;
       }
     }
     addLine();

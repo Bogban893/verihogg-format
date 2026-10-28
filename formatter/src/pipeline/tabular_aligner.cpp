@@ -359,6 +359,22 @@ static void process_lines(std::vector<UnwrappedLine<FormatToken>>& lines,
       continue;
     }
 
+    // Case-item lines keep the annotated spacing: no whitespace before the
+    // label colon and no column alignment after it. Do not mark them
+    // kAlreadyFormatted: unlike aligned groups, over-limit case lines must
+    // still reach the wrap search (an overflowing group likewise stays
+    // unformatted and falls through to the wrap search).
+    const bool is_case_item =
+        std::ranges::any_of(line.tokens, [](const FormatToken& ft) {
+          return ft.type == TokenType::kCaseLabelColon;
+        });
+    if (is_case_item) {
+      if (!current_group.line_indices.empty()) {
+        flush();
+      }
+      continue;
+    }
+
     AlignmentRow row;
     if (is_tabular) {
       row = build_row(line);

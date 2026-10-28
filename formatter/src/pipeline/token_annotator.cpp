@@ -146,8 +146,9 @@ auto TokenAnnotator::matchBrackets(gsl::span<FormatToken> tokens) const
 // Pass 2: determineTokenTypes
 // ---------------------------------------------------------------------------
 
-auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
-    -> void {
+auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens,
+                                         std::optional<size_t> label_colon)
+    const -> void {
   std::stack<Context> ctx;
   ctx.push(Context::kTopLevel);
 
@@ -275,8 +276,9 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
         continue;
 
       case TK::DefaultKeyword:
-        ft.type = (ctx.top() == Context::kCaseBody) ? TokenType::kDefaultKeyword
-                                                    : TokenType::kUnknown;
+        // A case-item label line starts with 'default' and ends with ':'.
+        ft.type = (label_colon && i == 0) ? TokenType::kDefaultKeyword
+                                          : TokenType::kUnknown;
         continue;
 
       // -- Separators ----------------------------------------------------
@@ -285,8 +287,12 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens) const
         continue;
 
       case TK::Colon:
-        ft.type = (ctx.top() == Context::kIndex) ? TokenType::kRangeColon
-                                                 : TokenType::kColon;
+        if (label_colon && i == *label_colon) {
+          ft.type = TokenType::kCaseLabelColon;
+        } else {
+          ft.type = (ctx.top() == Context::kIndex) ? TokenType::kRangeColon
+                                                   : TokenType::kColon;
+        }
         continue;
 
       case TK::Comma:
@@ -649,6 +655,10 @@ auto implSpacesRequired(TokenPair p) -> size_t {
       left.type == TokenType::kIndexedOperator) {
     return 0;
   }
+  // Case item: no whitespace before the label colon, one space after it.
+  if (right.type == TokenType::kCaseLabelColon) {
+    return 0;
+  }
   if (right.token.kind == TK::OpenBracket &&
       (left.token.kind == TK::Identifier ||
        left.token.kind == TK::SystemIdentifier ||
@@ -815,9 +825,11 @@ auto implComputeInterTokenInfo(gsl::span<FormatToken> tokens) -> void {
 // annotateSpan — three passes over a contiguous buffer
 // ---------------------------------------------------------------------------
 
-auto TokenAnnotator::annotateSpan(gsl::span<FormatToken> tokens) const -> void {
+auto TokenAnnotator::annotateSpan(gsl::span<FormatToken> tokens,
+                                  std::optional<size_t> label_colon) const
+    -> void {
   matchBrackets(tokens);
-  determineTokenTypes(tokens);
+  determineTokenTypes(tokens, label_colon);
   implComputeInterTokenInfo(tokens);
 }
 
@@ -826,7 +838,7 @@ auto TokenAnnotator::annotateUnwrappedLine(
   if (line.tokens.empty()) {
     return;
   }
-  annotateSpan(line.tokens);
+  annotateSpan(line.tokens, line.case_label_colon);
 }
 
 namespace {
@@ -1042,6 +1054,7 @@ auto TokenAnnotator::annotateWithDiagnostics(
           .raw_text = std::string(
               original_source.substr(source_cursor, raw_end - source_cursor)),
           .is_opaque = true,
+          .case_label_colon = std::nullopt,
       });
     }
     source_cursor = raw_end;

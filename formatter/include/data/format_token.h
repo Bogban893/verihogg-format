@@ -47,6 +47,7 @@ enum class TokenType : uint8_t {
   kSemicolon,
   kColon,
   kRangeColon,           // ':' in [...]
+  kCaseLabelColon,       // ':' terminating a case-item label line
   kReplicationOpenBrace, // '{' in {N{...}}
   kIndexedOperator,      // -, +, *, /, ... in [...]
   kComma,
