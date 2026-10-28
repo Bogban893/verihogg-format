@@ -79,7 +79,8 @@ TEST_F(FormattingTest, UnaryOperatorsPreserve) {
 }
 
 TEST_F(FormattingTest, UnaryOperatorsNormalize) {
-  const auto out = formatText("module m; initial a = ~ b & ! c | - d; endmodule");
+  const auto out =
+      formatText("module m; initial a = ~ b & ! c | - d; endmodule");
   EXPECT_NE(out.find("~b"), std::string::npos);
   EXPECT_NE(out.find("!c"), std::string::npos);
   EXPECT_NE(out.find("-d"), std::string::npos);
@@ -174,8 +175,8 @@ TEST_F(FormattingTest, PackedAndUnpackedPreserve) {
 // Indexed part-select: compact.
 // -----------------------------------------------------------------------------
 TEST_F(FormattingTest, IndexedPartSelectPreserve) {
-  const auto out = formatText(
-      "module m; assign y = x[3+:2]; assign z = x[7-:4]; endmodule");
+  const auto out =
+      formatText("module m; assign y = x[3+:2]; assign z = x[7-:4]; endmodule");
   EXPECT_NE(out.find("x[3+:2]"), std::string::npos);
   EXPECT_NE(out.find("x[7-:4]"), std::string::npos);
 }
@@ -290,7 +291,8 @@ TEST_F(FormattingTest, CaseItemColonWithBeginPreserve) {
 
 TEST_F(FormattingTest, CaseItemColonWithBeginNormalize) {
   const auto out = formatText(
-      "module m; always_comb case(a) 0 : begin b = 1; end default : begin b = 0; "
+      "module m; always_comb case(a) 0 : begin b = 1; end default : begin b = "
+      "0; "
       "end endcase endmodule");
   EXPECT_NE(out.find("0: begin"), std::string::npos);
   EXPECT_NE(out.find("default: begin"), std::string::npos);
@@ -315,7 +317,8 @@ TEST_F(FormattingTest, NonCaseColonTernaryPreserve) {
 }
 
 TEST_F(FormattingTest, NonCaseColonRangePreserve) {
-  const auto out = formatText("module m; logic [7:0] a; assign b = a[3:0]; endmodule");
+  const auto out =
+      formatText("module m; logic [7:0] a; assign b = a[3:0]; endmodule");
   EXPECT_NE(out.find("[7:0]"), std::string::npos);
   EXPECT_NE(out.find("a[3:0]"), std::string::npos);
   EXPECT_EQ(out.find("[7 : 0]"), std::string::npos);
@@ -354,8 +357,7 @@ TEST_F(FormattingTest, UnbasedUnsizedPreserve) {
 // Replication: compact.
 // -----------------------------------------------------------------------------
 TEST_F(FormattingTest, ReplicationPreserve) {
-  const auto out =
-      formatText("module m; initial a = {8{1'b0}}; endmodule");
+  const auto out = formatText("module m; initial a = {8{1'b0}}; endmodule");
   EXPECT_NE(out.find("{8{1'b0}}"), std::string::npos);
 }
 
@@ -472,8 +474,7 @@ TEST_F(FormattingTest, ComplexTernaryPreserve) {
 }
 
 TEST_F(FormattingTest, ComplexPackedDimensions) {
-  const auto out =
-      formatText("module m; logic [WIDTH-1:0] data; endmodule");
+  const auto out = formatText("module m; logic [WIDTH-1:0] data; endmodule");
   EXPECT_NE(out.find("[WIDTH-1:0]"), std::string::npos);
   EXPECT_EQ(out.find("[WIDTH - 1 : 0]"), std::string::npos);
 }
@@ -516,7 +517,8 @@ TEST_F(FormattingTest, ComplexCaseItemsNormalize) {
 // Enable once index expressions are formatted with spaced operators.
 // TEST_F(FormattingTest, ComplexArrayIndexing) {
 //   const auto out = formatText(
-//      "module m; logic [7:0] mem[255:0]; assign y = mem[addr + 1]; endmodule");
+//      "module m; logic [7:0] mem[255:0]; assign y = mem[addr + 1];
+//      endmodule");
 //  EXPECT_NE(out.find("addr + 1"), std::string::npos);
 //  EXPECT_EQ(out.find("addr+1"), std::string::npos);
 // }
@@ -529,8 +531,8 @@ TEST_F(FormattingTest, ComplexBitwiseOperators) {
 }
 
 TEST_F(FormattingTest, ComplexShiftOperators) {
-  const auto out = formatText(
-      "module m; assign x = a << 2; assign y = b >> 1; endmodule");
+  const auto out =
+      formatText("module m; assign x = a << 2; assign y = b >> 1; endmodule");
   EXPECT_NE(out.find("a << 2"), std::string::npos);
   EXPECT_NE(out.find("b >> 1"), std::string::npos);
 }
@@ -581,8 +583,8 @@ TEST_F(FormattingTest, ComplexModuleInstantiation) {
 }
 
 TEST_F(FormattingTest, ComplexPackedArraysWithOperatorsInRanges) {
-  const auto out = formatText(
-      "module m; logic [(DATA_WIDTH * 2)-1:0] wide_bus; endmodule");
+  const auto out =
+      formatText("module m; logic [(DATA_WIDTH * 2)-1:0] wide_bus; endmodule");
   EXPECT_NE(out.find("* 2"), std::string::npos);
   EXPECT_NE(out.find("[("), std::string::npos);
 }
@@ -610,36 +612,36 @@ TEST_F(FormattingTest, ComplexDimensionsAndCalls) {
 }
 
 TEST_F(FormattingTest, ComplexMacroWithArgs) {
-  const auto out = formatText(
-      "module m; initial `ASSERT((a == b), \"error\"); endmodule");
+  const auto out =
+      formatText("module m; initial `ASSERT((a == b), \"error\"); endmodule");
   EXPECT_NE(out.find("`ASSERT(("), std::string::npos);
   EXPECT_NE(out.find("(a == b), \"error\""), std::string::npos);
 }
 
 // -----------------------------------------------------------------------------
-  // begin / end placement (lowRISC style).
-  //
-  // Style guide rules covered here:
-  //   - "Use begin and end unless the whole statement fits on a single line."
-  //   - "begin must be on the same line as the preceding keyword, and ends
-  //      the line. end must start a new line. end else begin must be together
-  //      on one line."
-  //   - "The only exception is if end has a label, a following else should be
-  //      on a new line."
-  //   - "Case items: begin and end may be omitted if the entire case item fits
-  //      on a single line."
-  //   - "Generated blocks must be named; a space is placed between begin and
-  //      the code block name."
-  //
-  // The formatter joins/splits end/else correctly; inserting begin/end around
-  // a wrapped statement that can fit on a single line is not required (the
-  // formatter may collapse such statements to one line).
-  // -----------------------------------------------------------------------------
+// begin / end placement (lowRISC style).
+//
+// Style guide rules covered here:
+//   - "Use begin and end unless the whole statement fits on a single line."
+//   - "begin must be on the same line as the preceding keyword, and ends
+//      the line. end must start a new line. end else begin must be together
+//      on one line."
+//   - "The only exception is if end has a label, a following else should be
+//      on a new line."
+//   - "Case items: begin and end may be omitted if the entire case item fits
+//      on a single line."
+//   - "Generated blocks must be named; a space is placed between begin and
+//      the code block name."
+//
+// The formatter joins/splits end/else correctly; inserting begin/end around
+// a wrapped statement that can fit on a single line is not required (the
+// formatter may collapse such statements to one line).
+// -----------------------------------------------------------------------------
 
 TEST_F(FormattingTest, BeginEndSingleLineIfPreserve) {
   // A single-line if/else may omit begin/end.
-  const auto out = formatText(
-      "module m; initial if (a) b = 1;\n    else b = 0; endmodule");
+  const auto out =
+      formatText("module m; initial if (a) b = 1;\n    else b = 0; endmodule");
   EXPECT_NE(out.find("if (a) b = 1;"), std::string::npos);
   EXPECT_NE(out.find("else b = 0;"), std::string::npos);
 }
@@ -690,9 +692,9 @@ TEST_F(FormattingTest, EndLabeledFollowedByElsePreserve) {
 
 TEST_F(FormattingTest, BeginLabeledSpacingPreserve) {
   // Labeled begin/end: one space before AND after the colon.
-  const auto out =
-      formatText("module m; initial begin : foo\n    a = 1;\n  end : foo\n"
-                 "endmodule");
+  const auto out = formatText(
+      "module m; initial begin : foo\n    a = 1;\n  end : foo\n"
+      "endmodule");
   EXPECT_NE(out.find("begin : foo"), std::string::npos);
   EXPECT_NE(out.find("end : foo"), std::string::npos);
   EXPECT_EQ(out.find("begin: foo"), std::string::npos);
@@ -701,9 +703,9 @@ TEST_F(FormattingTest, BeginLabeledSpacingPreserve) {
 
 TEST_F(FormattingTest, BeginLabeledSpacingNormalize) {
   // Missing whitespace around the label colon is inserted.
-  const auto out =
-      formatText("module m; initial begin: foo\n    a = 1;\n  end: foo\n"
-                 "endmodule");
+  const auto out = formatText(
+      "module m; initial begin: foo\n    a = 1;\n  end: foo\n"
+      "endmodule");
   EXPECT_NE(out.find("begin : foo"), std::string::npos);
   EXPECT_NE(out.find("end : foo"), std::string::npos);
   EXPECT_EQ(out.find("begin: foo"), std::string::npos);
@@ -748,25 +750,25 @@ TEST_F(FormattingTest, GenerateNamedBlockSpacingNormalize) {
 }
 
 // -----------------------------------------------------------------------------
-  // begin/end Normalize tests.
-  // -----------------------------------------------------------------------------
+// begin/end Normalize tests.
+// -----------------------------------------------------------------------------
 
-  // end and else must be on the same line (unlabeled end).
-  TEST_F(FormattingTest, EndElseSeparateLinesNormalize) {
-    const auto out = formatText(
-        "module m; initial if (a) begin\n    b = 1;\n  end\n"
-        "  else begin\n    b = 0;\n  end\nendmodule");
-    EXPECT_NE(out.find("end else begin"), std::string::npos);
-    EXPECT_EQ(out.find("end\n  else"), std::string::npos);
-  }
+// end and else must be on the same line (unlabeled end).
+TEST_F(FormattingTest, EndElseSeparateLinesNormalize) {
+  const auto out = formatText(
+      "module m; initial if (a) begin\n    b = 1;\n  end\n"
+      "  else begin\n    b = 0;\n  end\nendmodule");
+  EXPECT_NE(out.find("end else begin"), std::string::npos);
+  EXPECT_EQ(out.find("end\n  else"), std::string::npos);
+}
 
-  // Labeled end forces else to a new line.
-  TEST_F(FormattingTest, EndLabeledElseSameLineNormalize) {
-    const auto out = formatText(
-        "module m; initial if (a) begin : blk_a\n    b = 1;\n"
-        "  end : blk_a else begin : blk_b\n    b = 0;\n"
-        "  end : blk_b\nendmodule");
-    EXPECT_NE(out.find("end : blk_a\n"), std::string::npos);
-    EXPECT_NE(out.find("else begin : blk_b"), std::string::npos);
-    EXPECT_EQ(out.find("end : blk_a else"), std::string::npos);
-  }
+// Labeled end forces else to a new line.
+TEST_F(FormattingTest, EndLabeledElseSameLineNormalize) {
+  const auto out = formatText(
+      "module m; initial if (a) begin : blk_a\n    b = 1;\n"
+      "  end : blk_a else begin : blk_b\n    b = 0;\n"
+      "  end : blk_b\nendmodule");
+  EXPECT_NE(out.find("end : blk_a\n"), std::string::npos);
+  EXPECT_NE(out.find("else begin : blk_b"), std::string::npos);
+  EXPECT_EQ(out.find("end : blk_a else"), std::string::npos);
+}
