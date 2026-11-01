@@ -432,7 +432,7 @@ TEST_F(FormattingTest, AtSignNormalize) {
 //   EXPECT_EQ(out.find("src : src"), std::string::npos);
 //   EXPECT_EQ(out.find("dst : dst"), std::string::npos);
 // }
-//
+
 // TEST_F(FormattingTest, AssignmentPatternColonNormalize) {
 //   const auto out =
 //       formatText("module m; initial a = '{src : src, dst : dst}; endmodule");
@@ -511,7 +511,8 @@ TEST_F(FormattingTest, ComplexCaseItemsNormalize) {
   EXPECT_EQ(out.find("default : res"), std::string::npos);
 }
 
-// TODO(Darya): formatter removes spaces around operators inside index expressions
+// TODO(Darya): formatter removes spaces around operators inside index
+// expressions
 // ("mem[addr+1]" instead of "mem[addr + 1]"). Index expressions are not
 // declarations, so the "whitespace around all binary operators" rule applies.
 // Enable once index expressions are formatted with spaced operators.
@@ -616,6 +617,209 @@ TEST_F(FormattingTest, ComplexMacroWithArgs) {
       formatText("module m; initial `ASSERT((a == b), \"error\"); endmodule");
   EXPECT_NE(out.find("`ASSERT(("), std::string::npos);
   EXPECT_NE(out.find("(a == b), \"error\""), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Module declaration: space between 'module' keyword and the port-list '('.
+// lowRISC guide: 'module foo (' — even when the port list is empty.
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, ModuleDeclNoPorts) {
+  const auto out = formatText("module m (); endmodule");
+  EXPECT_NE(out.find("module m ("), std::string::npos);
+  EXPECT_EQ(out.find("module m("), std::string::npos);
+}
+
+TEST_F(FormattingTest, ModuleDeclNoPortsNormalize) {
+  const auto out = formatText("module m(); endmodule");
+  EXPECT_NE(out.find("module m ("), std::string::npos);
+  EXPECT_EQ(out.find("module m("), std::string::npos);
+}
+
+TEST_F(FormattingTest, ModuleDeclWithPorts) {
+  const auto out = formatText("module m (input logic a); endmodule");
+  EXPECT_NE(out.find("module m ("), std::string::npos);
+  EXPECT_EQ(out.find("module m("), std::string::npos);
+}
+
+TEST_F(FormattingTest, ModuleDeclWithParameters) {
+  const auto out = formatText("module m #(parameter int W = 8) (); endmodule");
+  EXPECT_NE(out.find("module m #("), std::string::npos);
+  EXPECT_EQ(out.find("module m#("), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Module instantiation: space between instance name and its port-list '(',
+// no space between a port name and its connection '('.
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, InstanceParenSpace) {
+  const auto out = formatText("module m; my_mod u_inst (); endmodule");
+  EXPECT_NE(out.find("u_inst ("), std::string::npos);
+  EXPECT_EQ(out.find("u_inst("), std::string::npos);
+}
+
+TEST_F(FormattingTest, InstanceParenSpaceNormalize) {
+  const auto out = formatText("module m; my_mod u_inst(); endmodule");
+  EXPECT_NE(out.find("u_inst ("), std::string::npos);
+  EXPECT_EQ(out.find("u_inst("), std::string::npos);
+}
+
+TEST_F(FormattingTest, InstanceWithParameters) {
+  const auto out = formatText("module m; my_mod #(.W(8)) u_inst (); endmodule");
+  EXPECT_NE(out.find("my_mod #("), std::string::npos);
+  EXPECT_EQ(out.find("my_mod#("), std::string::npos);
+  EXPECT_NE(out.find("u_inst ("), std::string::npos);
+}
+
+TEST_F(FormattingTest, PortConnectionNoSpace) {
+  const auto out = formatText("module m; my_mod u_inst (.clk(clk)); endmodule");
+  EXPECT_NE(out.find(".clk(clk)"), std::string::npos);
+  EXPECT_EQ(out.find(".clk (clk)"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Function declaration: no space before the port-list '('.
+// (Different from module declaration — see the style guide's example.)
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, FunctionDeclNoParenSpace) {
+  const auto out = formatText("function int f(); return 1; endfunction");
+  EXPECT_NE(out.find("f()"), std::string::npos);
+  EXPECT_EQ(out.find("f ()"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Space between control-flow keywords and the following '('.
+// lowRISC guide: 'if (foo)', 'for (...)', 'while (...)', 'repeat (...)',
+// 'case (...)'.
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, IfBeforeParen) {
+  const auto out = formatText("module m; initial if (a) b = 1; endmodule");
+  EXPECT_NE(out.find("if (a)"), std::string::npos);
+  EXPECT_EQ(out.find("if(a)"), std::string::npos);
+}
+
+TEST_F(FormattingTest, IfBeforeParenNormalize) {
+  const auto out = formatText("module m; initial if(a) b = 1; endmodule");
+  EXPECT_NE(out.find("if (a)"), std::string::npos);
+  EXPECT_EQ(out.find("if(a)"), std::string::npos);
+}
+
+TEST_F(FormattingTest, ForBeforeParen) {
+  const auto out = formatText(
+      "module m; initial for (i = 0; i < 4; i = i + 1) b = 1; endmodule");
+  EXPECT_NE(out.find("for ("), std::string::npos);
+  EXPECT_EQ(out.find("for("), std::string::npos);
+}
+
+TEST_F(FormattingTest, WhileBeforeParen) {
+  const auto out =
+      formatText("module m; initial while (cond) b = 1; endmodule");
+  EXPECT_NE(out.find("while (cond)"), std::string::npos);
+  EXPECT_EQ(out.find("while(cond)"), std::string::npos);
+}
+
+TEST_F(FormattingTest, RepeatBeforeParen) {
+  const auto out = formatText("module m; initial repeat (4) b = 1; endmodule");
+  EXPECT_NE(out.find("repeat (4)"), std::string::npos);
+  EXPECT_EQ(out.find("repeat(4)"), std::string::npos);
+}
+
+TEST_F(FormattingTest, CaseBeforeParen) {
+  const auto out = formatText(
+      "module m; always_comb case (sel) default: b = 0; endcase endmodule");
+  EXPECT_NE(out.find("case (sel)"), std::string::npos);
+  EXPECT_EQ(out.find("case(sel)"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Space between procedural-block keyword and the '@' event control.
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, AlwaysBeforeAt) {
+  const auto out =
+      formatText("module m; always @(posedge clk) begin end endmodule");
+  EXPECT_NE(out.find("always @("), std::string::npos);
+  EXPECT_EQ(out.find("always@("), std::string::npos);
+}
+
+TEST_F(FormattingTest, AlwaysFFBeforeAt) {
+  const auto out =
+      formatText("module m; always_ff @(posedge clk) begin end endmodule");
+  EXPECT_NE(out.find("always_ff @("), std::string::npos);
+  EXPECT_EQ(out.find("always_ff@("), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Space between an edge keyword and the clock identifier.
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, EdgeKeywordSpace) {
+  const auto out = formatText(
+      "module m; always @(posedge clk or negedge rst_n) begin end endmodule");
+  EXPECT_NE(out.find("posedge clk"), std::string::npos);
+  EXPECT_EQ(out.find("posedgeclk"), std::string::npos);
+  EXPECT_NE(out.find("negedge rst_n"), std::string::npos);
+  EXPECT_EQ(out.find("negedgerst_n"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Named-end labels: one space before and after the ':'.
+// Same rule as 'begin : name' / 'end : name'.
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, EndmoduleLabel) {
+  const auto out = formatText("module m; endmodule : m");
+  EXPECT_NE(out.find("endmodule : m"), std::string::npos);
+  EXPECT_EQ(out.find("endmodule: m"), std::string::npos);
+  EXPECT_EQ(out.find("endmodule :m"), std::string::npos);
+}
+
+TEST_F(FormattingTest, EndfunctionLabel) {
+  const auto out = formatText("function int f(); return 1; endfunction : f");
+  EXPECT_NE(out.find("endfunction : f"), std::string::npos);
+  EXPECT_EQ(out.find("endfunction: f"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// '#' parameter operator: no space between '#' and the following '('.
+// -----------------------------------------------------------------------------
+// TODO(Darya): formatter splits the parameter list, breaking '#(.W(8))'.
+// TEST_F(FormattingTest, HashNoSpaceBeforeParen) {
+//   const auto out =
+//       formatText("module m; my_mod #(.W(8)) u_inst (); endmodule");
+//   EXPECT_NE(out.find("#(.W(8))"), std::string::npos);
+//   EXPECT_EQ(out.find("# ("), std::string::npos);
+// }
+
+// -----------------------------------------------------------------------------
+// Assignment pattern: apostrophe immediately followed by '{'.
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, ApostropheOpenBraceNoSpace) {
+  const auto out = formatText("module m; initial a = '{a: 1, b: 2}; endmodule");
+  EXPECT_NE(out.find("'{"), std::string::npos);
+  EXPECT_EQ(out.find("' {"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Keyword pair spacing: 'else if', 'else begin'.
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, ElseIfSpace) {
+  const auto out = formatText(
+      "module m; initial if (a) b = 1;\n    else if (c) b = 2; endmodule");
+  EXPECT_NE(out.find("else if"), std::string::npos);
+  EXPECT_EQ(out.find("elseif"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// Declarations: space between the type keyword and packed dimensions.
+// -----------------------------------------------------------------------------
+TEST_F(FormattingTest, WirePackedDim) {
+  const auto out = formatText("module m; wire [7:0] w; endmodule");
+  EXPECT_NE(out.find("wire [7:0]"), std::string::npos);
+  EXPECT_EQ(out.find("wire[7:0]"), std::string::npos);
+}
+
+TEST_F(FormattingTest, TypedefPackedDim) {
+  const auto out =
+      formatText("module m; typedef logic [31:0] word_t; endmodule");
+  EXPECT_NE(out.find("logic [31:0]"), std::string::npos);
+  EXPECT_EQ(out.find("logic[31:0]"), std::string::npos);
 }
 
 // -----------------------------------------------------------------------------
