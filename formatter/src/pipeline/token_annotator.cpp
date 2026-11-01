@@ -468,7 +468,12 @@ auto TokenAnnotator::determineTokenTypes(
       // -- Identifiers -------------------------------------------------
       case TK::Identifier:
       case TK::SystemIdentifier: {
-        if (next_is_module_name) {
+        // TreeUnwrapper (parseInstantiation) puts the closing ')' of a
+        // '#(...)' parameter list at the start of the instance-name line.
+        // The identifier that follows is the instance name.
+        if (i == 1 && tokens[0].token.kind == TK::CloseParenthesis) {
+          ft.type = TokenType::kInstanceName;
+        } else if (next_is_module_name) {
           ft.type = TokenType::kModuleName;
           next_is_module_name = false;
         } else if (next_is_instance_name) {
@@ -664,6 +669,12 @@ auto implSpacesRequired(TokenPair p) -> size_t {
        left.token.kind == TK::CloseParenthesis)) {
     return 0;
   }
+  // Module and instance names keep a space before their port-list '('
+  if (right.token.kind == TK::OpenParenthesis &&
+      (left.type == TokenType::kModuleName ||
+       left.type == TokenType::kInstanceName)) {
+    return 1;
+  }
   if (right.token.kind == TK::OpenParenthesis &&
       (left.token.kind == TK::Identifier ||
        left.token.kind == TK::SystemIdentifier ||
@@ -715,6 +726,12 @@ auto implBreakDecision(TokenPair p) -> BreakDecision {
   const FormatToken& left = *p.left;
   const FormatToken& right = *p.right;
 
+  // Never break between a module/instance name and its port-list '('.
+  if (right.token.kind == TK::OpenParenthesis &&
+      (left.type == TokenType::kModuleName ||
+       left.type == TokenType::kInstanceName)) {
+    return BreakDecision::kMustNotBreak;
+  }
   if (implSpacesRequired(p) == 0 && right.balancing != GroupBalancing::kClose) {
     return BreakDecision::kMustNotBreak;
   }
