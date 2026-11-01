@@ -1185,13 +1185,19 @@ class SVParser {
 
   // Each top-level comma-separated item in a parenthesized list gets its own
   // UnwrappedLine, so parameters and ports can expand vertically.
-  auto parseParenthesizedListInto(Line& line) -> void {
+  // When indent_items is set (module port lists), the items are indented one
+  // level while the header line and the closing ')' stay at the outer level.
+  auto parseParenthesizedListInto(Line& line, bool indent_items = false)
+      -> void {
     if (!at(TK::OpenParenthesis)) {
       return;
     }
     line.tokens.push_back(consume());
 
     addLine();
+    if (indent_items) {
+      ++indent_level_;
+    }
     int parenDepth = 0;
     int bracketDepth = 0;
     int braceDepth = 0;
@@ -1258,6 +1264,9 @@ class SVParser {
       consumeInto(line);
     }
     addLine();
+    if (indent_items) {
+      --indent_level_;
+    }
     if (at(TK::CloseParenthesis)) {
       line.tokens.push_back(consume());
     }
@@ -1275,8 +1284,9 @@ class SVParser {
       consumeInto(line_);
       consumeBalancedInto(TK::OpenParenthesis, TK::CloseParenthesis, line_);
     }
-    // port list: each port is a child line of the '(' node
-    parseParenthesizedListInto(line_);
+    // port list: each port is a child line of the '(' node, indented one
+    // level; the header and the closing ')' stay in column zero.
+    parseParenthesizedListInto(line_, /*indent_items=*/true);
     if (at(TK::Semicolon)) {
       consumeInto(line_);
     }

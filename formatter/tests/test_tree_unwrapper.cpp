@@ -201,7 +201,7 @@ TEST_F(TreeUnwrapperTest, ThreePortsBecomeThreeLines) {
             N(TK::OpenParenthesis, "("),
         }),
       // port 0: input logic clk ,
-      L(0, PP::kTabularAlignment,
+      L(kIndent, PP::kTabularAlignment,
         {
             N(TK::InputKeyword, "input"),
             N(TK::LogicKeyword, "logic"),
@@ -209,7 +209,7 @@ TEST_F(TreeUnwrapperTest, ThreePortsBecomeThreeLines) {
             N(TK::Comma, ","),
         }),
       // port 1: input logic rst_n ,
-      L(0, PP::kTabularAlignment,
+      L(kIndent, PP::kTabularAlignment,
         {
             N(TK::InputKeyword, "input"),
             N(TK::LogicKeyword, "logic"),
@@ -217,7 +217,7 @@ TEST_F(TreeUnwrapperTest, ThreePortsBecomeThreeLines) {
             N(TK::Comma, ","),
         }),
       // port 2: output logic [3:0] count  — no trailing comma
-      L(0, PP::kTabularAlignment,
+      L(kIndent, PP::kTabularAlignment,
         {
             N(TK::OutputKeyword, "output"),
             N(TK::LogicKeyword, "logic"),
@@ -361,7 +361,7 @@ TEST_F(TreeUnwrapperTest, MprfConditionalPortsKeepDirectivesAsLines) {
             N(TK::Directive, "`ifdef"),
             N(TK::Identifier, "SCR1_MPRF_RST_EN"),
         }),
-      L(0, PP::kTabularAlignment,
+      L(kIndent, PP::kTabularAlignment,
         {
             N(TK::InputKeyword, "input"),
             N(TK::LogicKeyword, "logic"),
@@ -372,7 +372,7 @@ TEST_F(TreeUnwrapperTest, MprfConditionalPortsKeepDirectivesAsLines) {
         {
             N(TK::Directive, "`endif"),
         }),
-      L(0, PP::kTabularAlignment,
+      L(kIndent, PP::kTabularAlignment,
         {
             N(TK::InputKeyword, "input"),
             N(TK::LogicKeyword, "logic"),
@@ -405,7 +405,7 @@ TEST_F(TreeUnwrapperTest, PortListKeepsUnknownBacktickAsMacroUsage) {
             N(TK::Identifier, "m"),
             N(TK::OpenParenthesis, "("),
         }),
-      L(0, PP::kTabularAlignment,
+      L(kIndent, PP::kTabularAlignment,
         {
             N(TK::Directive, "`SCR1_PORT"),
             N(TK::OpenParenthesis, "("),
@@ -417,7 +417,7 @@ TEST_F(TreeUnwrapperTest, PortListKeepsUnknownBacktickAsMacroUsage) {
             N(TK::CloseParenthesis, ")"),
             N(TK::Comma, ","),
         }),
-      L(0, PP::kTabularAlignment,
+      L(kIndent, PP::kTabularAlignment,
         {
             N(TK::InputKeyword, "input"),
             N(TK::LogicKeyword, "logic"),
