@@ -1194,6 +1194,12 @@ class SVParser {
     }
     line.tokens.push_back(consume());
 
+    // Empty list: keep "()" on the current line instead of splitting.
+    if (at(TK::CloseParenthesis)) {
+      line.tokens.push_back(consume());
+      return;
+    }
+
     addLine();
     if (indent_items) {
       ++indent_level_;

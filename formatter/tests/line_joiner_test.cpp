@@ -115,8 +115,7 @@ TEST_F(LineJoinerTest, JoinsSimpleIfBody) {
                        "if (a) b = 1;\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    if (a) b = 1;\n"
             "  end\n"
@@ -130,8 +129,7 @@ TEST_F(LineJoinerTest, JoinsIfElseSimpleBodies) {
                        "else b = 0;\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    if (a) b = 1; else b = 0;\n"
             "  end\n"
@@ -146,8 +144,7 @@ TEST_F(LineJoinerTest, JoinsIfElseIfElseChain) {
                        "else b = 0;\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    if (a) b = 1; else if (c) b = 2; else b = 0;\n"
             "  end\n"
@@ -160,8 +157,7 @@ TEST_F(LineJoinerTest, JoinsForLoopSimpleBody) {
                        "for (int i = 0; i < 4; i = i + 1) b = 0;\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    for (int i = 0; i < 4; i = i + 1) b = 0;\n"
             "  end\n"
@@ -175,8 +171,7 @@ TEST_F(LineJoinerTest, DoesNotJoinBeginEndBlock) {
                        "b = 1;\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb\n"
             "    if (a) begin\n"
             "      b = 1;\n"
@@ -195,8 +190,7 @@ TEST_F(LineJoinerTest, DoesNotJoinWhenTooLong) {
                        "end\n"
                        "endmodule",
                        style),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    if (a)\n"
             "      bbbbb = 1;\n"
@@ -215,8 +209,7 @@ TEST_F(LineJoinerTest, JoinsAtExactColumnLimit) {
                        "end\n"
                        "endmodule",
                        style),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    if (a) bbbb = 1;\n"
             "  end\n"
@@ -231,8 +224,7 @@ TEST_F(LineJoinerTest, DoesNotJoinWhenBodyHasLeadingComment) {
                        "b = 1;\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    if (a)\n"
             "      // comment\n"
@@ -249,8 +241,7 @@ TEST_F(LineJoinerTest, DoesNotJoinWhenElseHasLeadingComment) {
                        "else b = 0;\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    if (a) b = 1;\n"
             "    // comment\n"
@@ -268,8 +259,7 @@ TEST_F(LineJoinerTest, DoesNotJoinElseBeginBody) {
                        "end\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    if (a) b = 1;\n"
             "    else begin\n"
@@ -284,8 +274,7 @@ TEST_F(LineJoinerTest, JoinsAlwaysCombBody) {
                        "always_comb\n"
                        "q = d;\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb q = d;\n"
             "endmodule\n");
 }
@@ -300,8 +289,7 @@ TEST_F(LineJoinerTest, DoesNotJoinAlwaysCombBodyWhenTooLong) {
                        "bbb = 1;\n"
                        "endmodule",
                        style),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb\n"
             "    bbb = 1;\n"
             "endmodule\n");
@@ -312,8 +300,7 @@ TEST_F(LineJoinerTest, JoinsAlwaysFFBody) {
                        "always_ff @(posedge clk)\n"
                        "q <= d;\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_ff @(posedge clk) q <= d;\n"
             "endmodule\n");
 }
@@ -324,8 +311,7 @@ TEST_F(LineJoinerTest, JoinsWhileBody) {
                        "while (cond) b = 0;\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    while (cond) b = 0;\n"
             "  end\n"
@@ -338,8 +324,7 @@ TEST_F(LineJoinerTest, JoinsRepeatBody) {
                        "repeat (4) b = 0;\n"
                        "end\n"
                        "endmodule"),
-            "module m (\n"
-            ");\n"
+            "module m ();\n"
             "  always_comb begin\n"
             "    repeat (4) b = 0;\n"
             "  end\n"
@@ -348,7 +333,7 @@ TEST_F(LineJoinerTest, JoinsRepeatBody) {
 
 TEST_F(LineJoinerTest, KeepsModuleBodySeparate) {
   EXPECT_EQ(formatText("module m (); assign x = 1; assign y = 2; endmodule"),
-            "module m (\n);\n  assign x  = 1;\n  assign y  = 2;\nendmodule\n");
+            "module m ();\n  assign x  = 1;\n  assign y  = 2;\nendmodule\n");
 }
 
 TEST_F(LineJoinerTest, KeepsFunctionBodySeparate) {
