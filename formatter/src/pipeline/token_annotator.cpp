@@ -146,9 +146,9 @@ auto TokenAnnotator::matchBrackets(gsl::span<FormatToken> tokens) const
 // Pass 2: determineTokenTypes
 // ---------------------------------------------------------------------------
 
-auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens,
-                                         std::optional<size_t> label_colon)
-    const -> void {
+auto TokenAnnotator::determineTokenTypes(
+    gsl::span<FormatToken> tokens, std::optional<size_t> label_colon) const
+    -> void {
   std::stack<Context> ctx;
   ctx.push(Context::kTopLevel);
 
@@ -397,17 +397,15 @@ auto TokenAnnotator::determineTokenTypes(gsl::span<FormatToken> tokens,
       case TK::XorTilde:
         if (ctx.top() == Context::kIndex) {
           ft.type = TokenType::kIndexedOperator;
-        } else if (prev_kind == TK::Unknown &&
-                   (kind == TK::And || kind == TK::Or || kind == TK::Xor)) {
-          ft.type = TokenType::kBinaryOperator;
-        } else if (prev_type == TokenType::kMacroUsage ||
+        } else if ((prev_kind == TK::Unknown &&
+                    (kind == TK::And || kind == TK::Or || kind == TK::Xor)) ||
+                   prev_type == TokenType::kMacroUsage ||
                    isOperand(prev_kind)) {
           ft.type = TokenType::kBinaryOperator;
         } else {
           ft.type = TokenType::kUnaryOperator;
         }
         continue;
-
       // -- Unambiguously unary ---------------------------------------------
       case TK::Tilde:
       case TK::TildeAnd:
