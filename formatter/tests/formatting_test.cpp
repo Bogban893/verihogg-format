@@ -154,7 +154,7 @@ TEST_F(FormattingTest, UnpackedDynamicArrayNormalize) {
   EXPECT_EQ(out.find("a []"), std::string::npos);
 }
 
-// TODO: formatter keeps a space between the identifier and the queue
+// TODO(Darya): formatter keeps a space between the identifier and the queue
 // dimension ("b [$]" instead of "b[$]"). Enable once queue dimensions
 // are recognized as part of the unpacked dimension list.
 // TEST_F(FormattingTest, UnpackedQueueNormalize) {
@@ -181,7 +181,7 @@ TEST_F(FormattingTest, IndexedPartSelectPreserve) {
   EXPECT_NE(out.find("x[7-:4]"), std::string::npos);
 }
 
-// TODO: formatter keeps spaces around indexed part-select operators
+// TODO(Darya): formatter keeps spaces around indexed part-select operators
 // ("x[3 +: 2]" instead of "x[3+:2]"). Enable once the indexed operators
 // are recognized and compacted inside '[...]'.
 // TEST_F(FormattingTest, IndexedPartSelectNormalize) {
@@ -377,7 +377,7 @@ TEST_F(FormattingTest, DoubleColonPreserve) {
   EXPECT_EQ(out.find("pkg :: x"), std::string::npos);
 }
 
-// TODO: formatter keeps spaces around the scope-resolution operator
+// TODO(Darya): formatter keeps spaces around the scope-resolution operator
 // ("pkg :: x" instead of "pkg::x"). Enable once '::' is compacted.
 // TEST_F(FormattingTest, DoubleColonNormalize) {
 //   const auto out = formatText("module m; initial a = pkg :: x; endmodule");
@@ -420,7 +420,7 @@ TEST_F(FormattingTest, AtSignNormalize) {
 // -----------------------------------------------------------------------------
 // Assignment pattern colon: no space before, space after.
 // -----------------------------------------------------------------------------
-// TODO: formatter inserts a space before ':' in assignment patterns
+// TODO(Darya): formatter inserts a space before ':' in assignment patterns
 // ("'{src : src}" instead of "'{src: src}"). This is a pre-existing gap
 // in kColon handling; fix should mirror the kCaseLabelColon treatment
 // (no whitespace before, one space after).
@@ -511,7 +511,7 @@ TEST_F(FormattingTest, ComplexCaseItemsNormalize) {
   EXPECT_EQ(out.find("default : res"), std::string::npos);
 }
 
-// TODO: formatter removes spaces around operators inside index expressions
+// TODO(Darya): formatter removes spaces around operators inside index expressions
 // ("mem[addr+1]" instead of "mem[addr + 1]"). Index expressions are not
 // declarations, so the "whitespace around all binary operators" rule applies.
 // Enable once index expressions are formatted with spaced operators.

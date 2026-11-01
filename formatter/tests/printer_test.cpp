@@ -50,7 +50,7 @@ TEST_F(PrinterTest, FormatsMacroInvocationAcrossSourceLines) {
             "module m (\n"
             ");\n"
             "  initial\n"
-            "    $display (`__LINE__);\n"
+            "    $display(`__LINE__);\n"
             "endmodule\n");
 }
 
@@ -65,7 +65,7 @@ TEST_F(PrinterTest, FormatsUnknownMacroCallWithoutWarning) {
             "module m (\n"
             ");\n"
             "  initial\n"
-            "    $display (`EXTERNAL (1));\n"
+            "    $display(`EXTERNAL(1));\n"
             "endmodule\n");
   EXPECT_TRUE(result.warnings.empty());
 }
@@ -87,10 +87,9 @@ TEST_F(PrinterTest, FormatsStringifiedMacroInvocation) {
   EXPECT_EQ(result.formatted_text,
             "module m;\n"
             "`define show(expr) $display(`\"expr`\")\n"
-            "  initial\n"
-            "    begin\n"
-            "      `show ($bits (x));\n"
-            "    end\n"
+            "  initial begin\n"
+            "    `show($bits(x));\n"
+            "  end\n"
             "  logic y;\n"
             "endmodule\n");
   EXPECT_TRUE(result.warnings.empty());
@@ -113,10 +112,9 @@ TEST_F(PrinterTest, FormatsMacroFromIncludedFile) {
   EXPECT_EQ(result.formatted_text,
             "module m;\n"
             "`include \"defs.svh\"\n"
-            "  initial\n"
-            "    begin\n"
-            "      `SHOW ($bits (x));\n"
-            "    end\n"
+            "  initial begin\n"
+            "    `SHOW($bits(x));\n"
+            "  end\n"
             "  logic y;\n"
             "endmodule\n");
   EXPECT_TRUE(result.warnings.empty());
@@ -133,9 +131,9 @@ TEST_F(PrinterTest, FormatsNestedMacroCalls) {
       "  logic   y ;\n"
       "endmodule\n";
   const auto formatted = formatText(source);
-  EXPECT_NE(formatted.find("`OUTER ($bits (x), `INNER (a + b))"),
+  EXPECT_NE(formatted.find("`OUTER($bits(x), `INNER(a + b))"),
             std::string::npos);
-  EXPECT_NE(formatted.find("`NEXT (c + d)"), std::string::npos);
+  EXPECT_NE(formatted.find("`NEXT(c + d)"), std::string::npos);
   EXPECT_NE(formatted.find("  logic y;"), std::string::npos);
 }
 
@@ -173,10 +171,9 @@ TEST_F(PrinterTest, KeepsBeginAndForkLabelsOnOpeningLine) {
       "endmodule\n";
   const std::string expected =
       "module m;\n"
-      "  always_comb\n"
-      "    begin : blk\n"
-      "      a = b;\n"
-      "    end\n"
+      "  always_comb begin : blk\n"
+      "    a = b;\n"
+      "  end\n"
       "  initial\n"
       "    fork : fblk\n"
       "      a = b;\n"
@@ -212,8 +209,8 @@ TEST_F(PrinterTest, SplitsInstanceParametersWithoutDirectives) {
 
   const auto formatted = formatText(source);
   EXPECT_NE(formatted.find("child #(\n"), std::string::npos);
-  EXPECT_NE(formatted.find("\n  .A (1),\n"), std::string::npos);
-  EXPECT_NE(formatted.find("\n  .B (2)\n"), std::string::npos);
+  EXPECT_NE(formatted.find("\n  .A(1),\n"), std::string::npos);
+  EXPECT_NE(formatted.find("\n  .B(2)\n"), std::string::npos);
   EXPECT_EQ(formatText(formatted), formatted);
 }
 
