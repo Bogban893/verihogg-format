@@ -340,9 +340,6 @@ auto TokenAnnotator::determineTokenTypes(
       case TK::UnsignedKeyword:
       case TK::SignedKeyword:
       case TK::PackedKeyword:
-        ft.type = TokenType::kTypeKeyword;
-        continue;
-
       case TK::TypedefKeyword:
       case TK::EnumKeyword:
       case TK::StructKeyword:
@@ -480,16 +477,14 @@ auto TokenAnnotator::determineTokenTypes(
         } else if (next_is_module_name) {
           ft.type = TokenType::kModuleName;
           next_is_module_name = false;
-        } else if (next_is_instance_name) {
-          ft.type = TokenType::kInstanceName;
+        } else if (next_is_instance_name || prev_type == TokenType::kTypeName) {
           next_is_instance_name = false;
+          ft.type = TokenType::kInstanceName;
         } else if ((prev_type == TokenType::kDot &&
                     ctx.top() == Context::kInstancePorts) ||
                    (prev_type == TokenType::kPortDirection ||
                     prev_type == TokenType::kTypeKeyword)) {
           ft.type = TokenType::kPortName;
-        } else if (prev_type == TokenType::kTypeName) {
-          ft.type = TokenType::kInstanceName;
         } else if (prev_kind == TK::Identifier &&
                    prev_type == TokenType::kGeneric) {
           tokens[i - 1].type = TokenType::kTypeName;
