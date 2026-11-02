@@ -16,8 +16,14 @@ class FormattingTest : public ::testing::Test {
   auto formatText(std::string_view source,
                   format::FormatStyle style = format::FormatStyle::defaults())
       -> std::string {
+    return formatResult(source, style).formatted_text;
+  }
+
+  auto formatResult(std::string_view source,
+                    format::FormatStyle style = format::FormatStyle::defaults())
+      -> format::FormatResult {
     tokens_ = ctx_.lex_string(source);
-    return format::format(tokens_, style, ctx_.source_text()).formatted_text;
+    return format::format(tokens_, style, ctx_.source_text());
   }
 
  private:
@@ -820,6 +826,62 @@ TEST_F(FormattingTest, TypedefPackedDim) {
       formatText("module m; typedef logic [31:0] word_t; endmodule");
   EXPECT_NE(out.find("logic [31:0]"), std::string::npos);
   EXPECT_EQ(out.find("logic[31:0]"), std::string::npos);
+}
+
+// -----------------------------------------------------------------------------
+// typedef layout (lowRISC style).
+//
+//   - simple typedef: stays on one line;
+//   - struct/union and enum: always split into header / body / close;
+//   - struct members and enum entries: one per line;
+//   - valued enum members line up on '=';
+//   - a comment after '{' stays on the header line.
+// -----------------------------------------------------------------------------
+
+TEST_F(FormattingTest, TypedefSimpleStaysSingleLine) {
+  const auto out =
+      formatText("module m; typedef logic [31:0] word_t; endmodule");
+  EXPECT_NE(out.find("typedef logic [31:0] word_t;\nendmodule"),
+            std::string::npos);
+}
+
+TEST_F(FormattingTest, TypedefStructAlwaysSplits) {
+  const auto result = formatResult(
+      "module m; typedef struct packed { logic [2:0] field; } baz_t; "
+      "endmodule");
+  EXPECT_TRUE(result.warnings.empty());
+  const auto& out = result.formatted_text;
+  EXPECT_NE(out.find("typedef struct packed {\n    logic [2:0] field;\n  } "
+                     "baz_t;"),
+            std::string::npos);
+  EXPECT_EQ(out.find("typedef struct packed { logic"), std::string::npos);
+}
+
+TEST_F(FormattingTest, TypedefEnumSplitsOneEntryPerLine) {
+  const auto out = formatText(
+      "module m; typedef enum logic {SCR1_CSR_INIT, SCR1_CSR_RDY} e_t; "
+      "endmodule");
+  EXPECT_NE(out.find("typedef enum logic {\n    SCR1_CSR_INIT,\n    "
+                     "SCR1_CSR_RDY\n  } e_t;"),
+            std::string::npos);
+  EXPECT_EQ(out.find("SCR1_CSR_INIT, SCR1_CSR_RDY"), std::string::npos);
+}
+
+TEST_F(FormattingTest, TypedefEnumValuedMembersAlignEquals) {
+  const auto out = formatText(
+      "module m; typedef enum logic [7:0] {OP_JALR = 8'hA0, OP_ADDI = 8'h47, "
+      "OP_LDW = 8'h0B} opcode_e; endmodule");
+  EXPECT_NE(out.find("OP_JALR  = 8'ha0,\n    OP_ADDI  = 8'h47,\n    OP_LDW   "
+                     "= 8'h0B"),
+            std::string::npos);
+}
+
+TEST_F(FormattingTest, TypedefEnumCommentStaysOnHeaderLine) {
+  const auto out = formatText(
+      "module m; typedef enum logic [1:0] { // comment\nA, B\n} c_e; "
+      "endmodule");
+  EXPECT_NE(out.find("{ // comment\n    A,\n    B\n  } c_e;"),
+            std::string::npos);
 }
 
 // -----------------------------------------------------------------------------

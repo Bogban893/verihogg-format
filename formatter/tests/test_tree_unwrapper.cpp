@@ -1357,4 +1357,76 @@ TEST_F(TreeUnwrapperTest, ForkJoinAnyUsesSharedBlockBoundary) {
   EXPECT_TRUE(resumed);
 }
 
+// ---- typedef ---------------------------------------------------------------
+
+TEST_F(TreeUnwrapperTest, TypedefStructSplitsIntoLines) {
+  auto result = parseWithDiagnostics(
+      "typedef struct packed { logic [2:0] field; } "
+      "baz_t;");
+
+  EXPECT_TRUE(result.warnings.empty());
+
+  const std::vector<LineSnap> expected = {
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::TypedefKeyword, "typedef"),
+            N(TK::StructKeyword, "struct"),
+            N(TK::PackedKeyword, "packed"),
+            N(TK::OpenBrace, "{"),
+        }),
+      L(kIndent, PP::kTabularAlignment,
+        {
+            N(TK::LogicKeyword, "logic"),
+            N(TK::OpenBracket, "["),
+            N(TK::IntegerLiteral, "2"),
+            N(TK::Colon, ":"),
+            N(TK::IntegerLiteral, "0"),
+            N(TK::CloseBracket, "]"),
+            N(TK::Identifier, "field"),
+            N(TK::Semicolon, ";"),
+        }),
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::CloseBrace, "}"),
+            N(TK::Identifier, "baz_t"),
+            N(TK::Semicolon, ";"),
+        }),
+  };
+
+  EXPECT_EQ(snap(result.lines), expected);
+}
+
+TEST_F(TreeUnwrapperTest, TypedefEnumOneEntryPerLine) {
+  auto result = parseWithDiagnostics("typedef enum logic {A, B} e_t;");
+
+  EXPECT_TRUE(result.warnings.empty());
+
+  const std::vector<LineSnap> expected = {
+      L(0, PP::kFitOnLineElseExpand,
+        {
+            N(TK::TypedefKeyword, "typedef"),
+            N(TK::EnumKeyword, "enum"),
+            N(TK::LogicKeyword, "logic"),
+            N(TK::OpenBrace, "{"),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Identifier, "A"),
+            N(TK::Comma, ","),
+        }),
+      L(kIndent, PP::kAlwaysExpand,
+        {
+            N(TK::Identifier, "B"),
+        }),
+      L(0, PP::kAlwaysExpand,
+        {
+            N(TK::CloseBrace, "}"),
+            N(TK::Identifier, "e_t"),
+            N(TK::Semicolon, ";"),
+        }),
+  };
+
+  EXPECT_EQ(snap(result.lines), expected);
+}
+
 // NOLINTEND(misc-use-internal-linkage,bugprone-throwing-static-initialization,cert-err58-cpp,cppcoreguidelines-owning-memory,modernize-use-trailing-return-type)
