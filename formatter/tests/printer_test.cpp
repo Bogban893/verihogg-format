@@ -443,10 +443,10 @@ TEST_F(PrinterTest, PreservesWhitespaceAroundInlineBlockComments) {
                        "assign z = a /*left*/b; assign w = a/*right*/ b; "
                        "assign v = a /*both*/ b; endmodule"),
             "module m ();\n"
-            "  assign y  = a/*tight*/b;\n"
-            "  assign z  = a /*left*/b;\n"
-            "  assign w  = a/*right*/ b;\n"
-            "  assign v  = a /*both*/ b;\n"
+            "  assign y = a/*tight*/b;\n"
+            "  assign z = a /*left*/b;\n"
+            "  assign w = a/*right*/ b;\n"
+            "  assign v = a /*both*/ b;\n"
             "endmodule\n");
 }
 
@@ -526,9 +526,9 @@ TEST_F(PrinterTest, NormalizesNumericLiteralTextBeforeFormatting) {
   EXPECT_EQ(formatText("module m (); assign y = 8'HFF; assign z = 'X; "
                        "assign r = 1E-3; endmodule"),
             "module m ();\n"
-            "  assign y  = 8'hff;\n"
-            "  assign z  = 'x;\n"
-            "  assign r  = 1e-3;\n"
+            "  assign y = 8'hff;\n"
+            "  assign z = 'x;\n"
+            "  assign r = 1e-3;\n"
             "endmodule\n");
 }
 

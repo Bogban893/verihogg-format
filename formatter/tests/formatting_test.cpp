@@ -664,7 +664,10 @@ TEST_F(FormattingTest, InstanceParenSpace) {
 }
 
 TEST_F(FormattingTest, InstanceParenSpaceNormalize) {
-  const auto out = formatText("module m; my_mod u_inst(); endmodule");
+  const auto out = formatText(
+      "module m ();\n"
+      "  my_mod u_inst();\n"
+      "endmodule\n");
   EXPECT_NE(out.find("u_inst ("), std::string::npos);
   EXPECT_EQ(out.find("u_inst("), std::string::npos);
 }
@@ -871,7 +874,7 @@ TEST_F(FormattingTest, TypedefEnumValuedMembersAlignEquals) {
   const auto out = formatText(
       "module m; typedef enum logic [7:0] {OP_JALR = 8'hA0, OP_ADDI = 8'h47, "
       "OP_LDW = 8'h0B} opcode_e; endmodule");
-  EXPECT_NE(out.find("OP_JALR  = 8'ha0,\n    OP_ADDI  = 8'h47,\n    OP_LDW   "
+  EXPECT_NE(out.find("OP_JALR = 8'ha0,\n    OP_ADDI = 8'h47,\n    OP_LDW  "
                      "= 8'h0B"),
             std::string::npos);
 }

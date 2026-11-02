@@ -333,7 +333,7 @@ TEST_F(LineJoinerTest, JoinsRepeatBody) {
 
 TEST_F(LineJoinerTest, KeepsModuleBodySeparate) {
   EXPECT_EQ(formatText("module m (); assign x = 1; assign y = 2; endmodule"),
-            "module m ();\n  assign x  = 1;\n  assign y  = 2;\nendmodule\n");
+            "module m ();\n  assign x = 1;\n  assign y = 2;\nendmodule\n");
 }
 
 TEST_F(LineJoinerTest, KeepsFunctionBodySeparate) {
@@ -642,7 +642,7 @@ TEST_F(LineJoinerTest, PreservesBracketLinksAcrossElseChain) {
 
 TEST_F(LineJoinerTest, KeepsForkBlockExpanded) {
   EXPECT_EQ(formatText("initial fork x = 1; y = 2; join"),
-            "initial\n  fork\n    x  = 1;\n    y  = 2;\n  join\n");
+            "initial\n  fork\n    x = 1;\n    y = 2;\n  join\n");
 }
 
 TEST_F(LineJoinerTest, DoesNotMoveBodyWithTrailingComment) {

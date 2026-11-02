@@ -9,7 +9,7 @@ namespace format {
 static constexpr size_t kMinColumnGap = 4;
 static constexpr size_t kMinGroupSize = 2;
 static constexpr size_t kCommentColumnGap = 8;
-static constexpr size_t kMinSpacesBeforeAssignment = 2;
+static constexpr size_t kMinSpacesBeforeAssignment = 1;
 static constexpr size_t kMinSpacesAfterAssignment = 1;
 static constexpr size_t kMinSpacesCaseItem = 1;
 static constexpr size_t kMinSpacesPortDirectionType = 2;
