@@ -337,12 +337,16 @@ auto TokenAnnotator::determineTokenTypes(
       case TK::VoidKeyword:
       case TK::CHandleKeyword:
       case TK::EventKeyword:
+      case TK::UnsignedKeyword:
+      case TK::SignedKeyword:
+      case TK::PackedKeyword:
+        ft.type = TokenType::kTypeKeyword;
+        continue;
+
       case TK::TypedefKeyword:
       case TK::EnumKeyword:
       case TK::StructKeyword:
       case TK::UnionKeyword:
-      case TK::UnsignedKeyword:
-      case TK::SignedKeyword:
         ft.type = TokenType::kTypeKeyword;
         continue;
 
@@ -755,7 +759,8 @@ auto implBreakDecision(TokenPair p) -> BreakDecision {
   if (isBlockEnd(right.type) || isBlockEnd(left.type)) {
     return BreakDecision::kMustBreak;
   }
-  if (left.type == TokenType::kSemicolon && right.nesting_level == 0) {
+  if (left.type == TokenType::kSemicolon && left.nesting_level == 0 &&
+      right.nesting_level == 0) {
     return BreakDecision::kMustBreak;
   }
   if (left.type == TokenType::kAssignKeyword) {
@@ -920,8 +925,9 @@ struct AnnotationFailure {
     }
     if (isClose(kind)) {
       if (bracket_stack.empty()) {
-        // A module or parameter list can close on its own unwrapped line.
-        if (kind != TK::CloseParenthesis || i != 0) {
+        // A module, parameter, port or type-body list can close on its own
+        // unwrapped line.
+        if (i != 0) {
           return AnnotationFailure{.location = token.location(),
                                    .reason = "unmatched closing bracket"};
         }

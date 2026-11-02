@@ -188,6 +188,176 @@ class SVParser {
     addLine();
   }
 
+  // Look-ahead scan of one typedef statement. std::nullopt means the
+  // statement boundary is not a plain depth-0 semicolon (missing close,
+  // compiler directive, conditional boundary) and the caller must fall back
+  // to consumeUntilSemi().
+  struct TypedefScan {
+    size_t end = 0;        // offset of the terminating ';'
+    size_t body_open = 0;  // offset of the depth-0 '{'
+    bool has_brace = false;
+    bool is_struct_union = false;
+  };
+
+  [[nodiscard]] auto scanTypedef() const -> std::optional<TypedefScan> {
+    TypedefScan scan;
+    size_t paren = 0;
+    size_t bracket = 0;
+    size_t brace = 0;
+    bool seen_struct_union = false;
+    for (size_t i = 0;; ++i) {
+      const Token tok = peek(i);
+      if (tok.kind == TK::EndOfFile || isCompilerDirective(tok) ||
+          isConditionalBoundaryDirective(tok)) {
+        return std::nullopt;
+      }
+      switch (tok.kind) {
+        case TK::StructKeyword:
+        case TK::UnionKeyword:
+          seen_struct_union = true;
+          break;
+        case TK::Semicolon:
+          if (paren == 0 && bracket == 0 && brace == 0) {
+            scan.end = i;
+            return scan;
+          }
+          break;
+        case TK::OpenParenthesis:
+          ++paren;
+          break;
+        case TK::CloseParenthesis:
+          if (paren == 0) {
+            return std::nullopt;
+          }
+          --paren;
+          break;
+        case TK::OpenBracket:
+          ++bracket;
+          break;
+        case TK::CloseBracket:
+          if (bracket == 0) {
+            return std::nullopt;
+          }
+          --bracket;
+          break;
+        case TK::OpenBrace:
+          if (brace == 0 && paren == 0 && bracket == 0 && !scan.has_brace) {
+            scan.has_brace = true;
+            scan.body_open = i;
+            scan.is_struct_union = seen_struct_union;
+          }
+          ++brace;
+          break;
+        case TK::ApostropheOpenBrace:
+          ++brace;
+          break;
+        case TK::CloseBrace:
+          if (brace == 0) {
+            return std::nullopt;
+          }
+          --brace;
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  // Layout per the lowRISC style guide:
+  //   - simple typedef: one line;
+  //   - struct/union and enum: always split — header, body, close;
+  //     every struct member and every enum entry goes on its own line
+  //     (the tabular aligner then lines up '=' in valued enums).
+  auto parseTypedef() -> void {
+    const std::optional<TypedefScan> scan = scanTypedef();
+    if (!scan) {
+      consumeUntilSemi();
+      return;
+    }
+    const bool split = scan->has_brace;
+    if (!split) {
+      for (size_t i = 0; i <= scan->end; ++i) {
+        consumeInto(line_);
+      }
+      addLine();
+      return;
+    }
+
+    // Header: typedef ... {
+    for (size_t i = 0; i <= scan->body_open; ++i) {
+      consumeInto(line_);
+    }
+    addLine();
+    ++indent_level_;
+
+    size_t paren = 0;
+    size_t bracket = 0;
+    size_t brace = 0;
+    if (scan->is_struct_union) {
+      // One member declaration per line, terminated by a depth-0 ';'.
+      while (!at(TK::EndOfFile)) {
+        if (at(TK::CloseBrace) && brace == 0) {
+          break;
+        }
+        if (at(TK::OpenParenthesis)) {
+          ++paren;
+        } else if (at(TK::CloseParenthesis)) {
+          --paren;
+        } else if (at(TK::OpenBracket)) {
+          ++bracket;
+        } else if (at(TK::CloseBracket)) {
+          --bracket;
+        } else if (at(TK::OpenBrace) || at(TK::ApostropheOpenBrace)) {
+          ++brace;
+        } else if (at(TK::CloseBrace)) {
+          --brace;
+        } else if (at(TK::Semicolon) && paren == 0 && bracket == 0 &&
+                   brace == 0) {
+          consumeInto(line_);
+          addLine();
+          continue;
+        }
+        consumeInto(line_);
+      }
+    } else {
+      // One enum entry per line, terminated by a depth-0 ','.
+      while (!at(TK::EndOfFile)) {
+        if (at(TK::CloseBrace) && brace == 0) {
+          break;
+        }
+        if (at(TK::OpenParenthesis)) {
+          ++paren;
+        } else if (at(TK::CloseParenthesis)) {
+          --paren;
+        } else if (at(TK::OpenBracket)) {
+          ++bracket;
+        } else if (at(TK::CloseBracket)) {
+          --bracket;
+        } else if (at(TK::OpenBrace) || at(TK::ApostropheOpenBrace)) {
+          ++brace;
+        } else if (at(TK::CloseBrace)) {
+          --brace;
+        } else if (at(TK::Comma) && paren == 0 && bracket == 0 && brace == 0) {
+          consumeInto(line_);
+          addLine();
+          continue;
+        }
+        consumeInto(line_);
+      }
+    }
+    addLine();
+    --indent_level_;
+
+    // Close: } name;
+    while (!at(TK::EndOfFile)) {
+      consumeInto(line_);
+      if (line_.tokens.back().kind == TK::Semicolon) {
+        break;
+      }
+    }
+    addLine();
+  }
+
   auto warnUnsupported(Token tok, std::string_view construct) -> void {
     warnings_.push_back({
         .location = tok.location(),
@@ -988,9 +1158,12 @@ class SVParser {
       case TK::ReturnKeyword:
       case TK::StringKeyword:
       case TK::TimeKeyword:
-      case TK::TypedefKeyword:
       case TK::VoidKeyword:
         consumeUntilSemi();
+        break;
+
+      case TK::TypedefKeyword:
+        parseTypedef();
         break;
 
       default:

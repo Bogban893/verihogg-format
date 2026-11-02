@@ -359,6 +359,17 @@ static void process_lines(std::vector<UnwrappedLine<FormatToken>>& lines,
       continue;
     }
 
+    // A type-body header (typedef ... {) is a layout anchor, not a
+    // declaration row: it must not join the alignment group of the members
+    // that follow, and its own spacing stays annotated.
+    if (is_tabular && line.tokens.back().token.kind ==
+                          slang::parsing::TokenKind::OpenBrace) {
+      if (!current_group.line_indices.empty()) {
+        flush();
+      }
+      continue;
+    }
+
     // Case-item lines keep the annotated spacing: no whitespace before the
     // label colon and no column alignment after it. Do not mark them
     // kAlreadyFormatted: unlike aligned groups, over-limit case lines must
