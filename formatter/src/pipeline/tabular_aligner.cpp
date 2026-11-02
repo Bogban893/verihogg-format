@@ -362,8 +362,8 @@ static void process_lines(std::vector<UnwrappedLine<FormatToken>>& lines,
     // A type-body header (typedef ... {) is a layout anchor, not a
     // declaration row: it must not join the alignment group of the members
     // that follow, and its own spacing stays annotated.
-    if (is_tabular && line.tokens.back().token.kind ==
-                          slang::parsing::TokenKind::OpenBrace) {
+    if (is_tabular &&
+        line.tokens.back().token.kind == slang::parsing::TokenKind::OpenBrace) {
       if (!current_group.line_indices.empty()) {
         flush();
       }
