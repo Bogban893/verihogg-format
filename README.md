@@ -326,6 +326,7 @@ If you are not using Nix, install the following dependencies manually:
 
 - C++20-compatible compiler
 - CMake 3.20+
+- [libgit2](https://libgit2.org/) 1.9+ with its CMake package — generation of unified patches
 - [slang](https://github.com/MikePopoloski/slang) — SystemVerilog parser
 - [CLI11](https://github.com/CLIUtils/CLI11) — command-line parser
 - [yaml-cpp](https://github.com/jbeder/yaml-cpp) — YAML parser (configuration files)
