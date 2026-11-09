@@ -189,7 +189,7 @@ Use `nix develop` for a development shell with build tools and clang tools. The 
 
 ### CMake
 
-You need a C++20 compiler, CMake 3.20+, and the development packages for [slang](https://github.com/MikePopoloski/slang), [Microsoft GSL](https://github.com/microsoft/GSL), [CLI11](https://github.com/CLIUtils/CLI11), [yaml-cpp](https://github.com/jbeder/yaml-cpp), and [valijson](https://github.com/tristanpenman/valijson). CMake also finds the platform thread library. Depending on your package layout, set `CMAKE_PREFIX_PATH` or the corresponding `*_DIR` variables.
+You need a C++20 compiler, CMake 3.20+, and the development packages for [slang](https://github.com/MikePopoloski/slang), [Microsoft GSL](https://github.com/microsoft/GSL), [CLI11](https://github.com/CLIUtils/CLI11), [libgit2](https://libgit2.org/) 1.9+ with its CMake package, [yaml-cpp](https://github.com/jbeder/yaml-cpp), and [valijson](https://github.com/tristanpenman/valijson). CMake also finds the platform thread library. Depending on your package layout, set `CMAKE_PREFIX_PATH` or the corresponding `*_DIR` variables.
 
 To build only the formatter executable, without discovering Google Test:
 
