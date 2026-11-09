@@ -103,6 +103,7 @@ struct RunConfig {
   bool inplace = false;
   bool check = false;
   bool no_links = false;
+  bool diff = false;
   std::string stdin_name = "<stdin>";
   std::vector<std::string> input_files{};
 };

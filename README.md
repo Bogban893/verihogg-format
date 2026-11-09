@@ -85,15 +85,30 @@ The column limit is a layout target, not a guarantee: an unbreakable token or a 
 | --- | --- |
 | `verihogg-format rtl/alu.sv` | Print formatted source to stdout; leave the file untouched. |
 | `verihogg-format --inplace rtl/alu.sv` | Replace the file with formatted source. |
+| `verihogg-format --diff rtl/alu.sv` | Print a Git-style unified patch without changing the file. |
+| `verihogg-format --check --diff rtl/alu.sv` | Print a patch and return 1 when formatting is needed. |
 | `verihogg-format --check rtl/alu.sv` | Compare the file with formatted output without writing it; useful in CI. |
 | `verihogg-format < rtl/alu.sv` | Read from stdin and print to stdout. |
 | `verihogg-format --no-links rtl/alu.sv` | Omit GitHub issue links from the diagnostic summary. |
 
-Multiple file paths are accepted. In preview mode their formatted contents are written consecutively to stdout, without file separators; use `--inplace` or `--check` when processing many files independently. `--check` requires file paths and cannot be combined with `--inplace`.
+Multiple file paths are accepted. In preview mode their formatted contents are written consecutively to stdout, without file separators; use `--inplace` or `--check` when processing many files independently. `--check` requires file paths. Neither `--check` nor `--diff` can be combined with `--inplace`.
 
-`--check` writes nothing to stdout. It exits with **0** when all supplied files already match the formatter output, and **1** if a file needs formatting, cannot be read, or another error occurs. Normal preview and in-place runs return **0** even when they report unsupported constructs; an execution error returns **1**.
+`--check` writes nothing to stdout unless combined with `--diff`. It exits with **0** when all supplied files already match the formatter output, and **1** if a file needs formatting, cannot be read, or another error occurs. Normal preview and in-place runs return **0** even when they report unsupported constructs; an execution error returns **1**.
 
-If an input path cannot be found, `--check` reports the error and continues checking the other matched files; the final exit code is still **1**.
+If an input path cannot be found, `--check` and `--diff` report the error and continue checking the other matched files; the final exit code is still **1**.
+
+### Preview formatting changes
+
+```sh
+verihogg-format --diff rtl/alu.sv
+verihogg-format --check --diff rtl/alu.sv
+verihogg-format --diff rtl/alu.sv > changes.patch
+verihogg-format --diff < rtl/alu.sv
+```
+
+`--diff` prints only a Git-style unified patch to stdout and never writes source files. Differences alone return **0**; add `--check` to return **1** when files need formatting. Read, formatting, and output errors return **1**. A clean file produces no patch. Files are compared in parallel, with patches and diagnostics emitted in input order using each file's resolved configuration and CLI overrides.
+
+Patch paths are relative to the current directory; stdin uses `<stdin>`. Patches include three context lines, preserve line-ending bytes, and mark missing final newlines. Apply file patches from the same working directory, for example with `git apply changes.patch`. Paths outside that directory may require relocation before Git will apply them. Stdin works only with standalone `--diff`, since `--check` requires file paths.
 
 ### Diagnostics and issue links
 
@@ -108,9 +123,9 @@ verihogg-format: rtl/demo.sv processed (some regions left unchanged).
 
 If multiple reported files with warnings share a basename, the summary keeps their full paths in locations such as `first at /project/rtl/demo.sv:5` to distinguish them.
 
-The summary also offers pre-filled GitHub issue links for unsupported constructs and incorrect formatting. In normal preview and in-place runs, the incorrect-formatting link is shown even when there are no warnings, because a user may still notice a formatting mistake. `--no-links` removes the links and their explanatory text while retaining status and warning information. It works in `--check` mode too. Do not include private source code in an issue without reviewing it first.
+The summary also offers pre-filled GitHub issue links for unsupported constructs and incorrect formatting. In normal preview and in-place runs, the incorrect-formatting link is shown even when there are no warnings, because a user may still notice a formatting mistake. `--no-links` removes the links and their explanatory text while retaining status and warning information. It works in `--check` and `--diff` modes too. Do not include private source code in an issue without reviewing it first.
 
-`--check` prints `Needs formatting: <path>` for files that differ and errors for unreadable files. When there are formatter warnings, it also prints the grouped summary and issue links, without the per-file `processed` or `written` status lines. Without warnings, it omits the summary and links. Summary line numbers refer to the formatted output that would be produced, even though files are not rewritten. The return code depends on whether files match the formatter output and whether errors occurred, not on the number of warnings.
+`--check` prints `Needs formatting: <path>` for files that differ and errors for unreadable files. When there are formatter warnings, it also prints the grouped summary and issue links, without the per-file `processed` or `written` status lines. Without warnings, it omits the summary and links. Summary line numbers refer to the formatted output that would be produced, even though files are not rewritten. Standalone `--diff` uses the same warning-only summary and omits `Needs formatting` lines. The return code in check mode depends on whether files match the formatter output and whether errors occurred, not on the number of warnings.
 
 ## Formatting options
 
@@ -127,7 +142,8 @@ These options affect the current formatter:
 | `--config PATH` | automatic search | Load one specific YAML configuration file. |
 | `-n, --inplace` | off | Rewrite input files. |
 | `--check` | off | Check without rewriting input files. |
-| `--no-links` | off | Hide GitHub issue links in the diagnostic summary, including in `--check`. |
+| `--diff` | off | Print a unified patch without rewriting input files. |
+| `--no-links` | off | Hide GitHub issue links in the diagnostic summary, including in `--check` and `--diff`. |
 | `--wrap_end_else_clauses` | off | Put a block-closing `end` and the following `else` on separate lines. |
 
 The formatter currently runs its line-wrap search regardless of the reserved `try_wrap_long_lines` setting. Comments and unsupported regions are preserved rather than reflowed into a new comment style.

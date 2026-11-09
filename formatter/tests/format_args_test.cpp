@@ -139,6 +139,36 @@ TEST_F(FormatArgsTest, CheckAndInplaceAreMutuallyExclusive) {
   EXPECT_FALSE(parse({"--inplace", "--check"}));
 }
 
+TEST_F(FormatArgsTest, DiffFlagSetsRunConfig) {
+  const auto [style, run] = buildStyle({"--diff"});
+  EXPECT_TRUE(run.diff);
+  EXPECT_FALSE(run.check);
+  EXPECT_FALSE(run.inplace);
+}
+
+TEST_F(FormatArgsTest, DiffAndCheckCanBeCombined) {
+  const auto [style, run] = buildStyle({"--diff", "--check"});
+  EXPECT_TRUE(run.diff);
+  EXPECT_TRUE(run.check);
+}
+
+TEST_F(FormatArgsTest, DiffTreatsHelpAfterSeparatorAsFilename) {
+  const auto [style, run] = buildStyle({"--diff", "--", "--help"});
+  EXPECT_TRUE(run.diff);
+  ASSERT_EQ(getBinder().files().size(), 1U);
+  EXPECT_EQ(getBinder().files().front(), "--help");
+}
+
+TEST_F(FormatArgsTest, DiffIsDisabledByDefault) {
+  const auto [style, run] = buildStyle();
+  EXPECT_FALSE(run.diff);
+}
+
+TEST_F(FormatArgsTest, DiffAndInplaceAreMutuallyExclusive) {
+  EXPECT_FALSE(parse({"--diff", "--inplace"}));
+  EXPECT_FALSE(parse({"--inplace", "--diff"}));
+}
+
 TEST_F(FormatArgsTest, InplaceFlagSetsRunConfig) {
   auto [style, run] = buildStyle({"--inplace"});
 
