@@ -8,6 +8,7 @@
 #include <fstream>
 #include <gsl/span>
 #include <mutex>
+#include <stdexcept>
 #include <string_view>
 #include <thread>
 #include <vector>
@@ -34,7 +35,7 @@ auto writeFile(const std::filesystem::path& path, std::string_view content)
 // Workers only write their own result slot; diagnostics are emitted after
 // joining so their order follows the input files rather than scheduling.
 auto checkInParallel(gsl::span<const std::filesystem::path> files,
-                     gsl::span<const FormatStyle> styles)
+                     gsl::span<const FormatStyle> styles, bool include_diff)
     -> std::vector<CheckResult> {
   std::vector<CheckResult> results(files.size());
   std::atomic<size_t> next{0};
@@ -49,7 +50,8 @@ auto checkInParallel(gsl::span<const std::filesystem::path> files,
         if (i >= files.size()) {
           break;
         }
-        results.at(i) = FormatChecker(styles[i]).checkFile(files[i]);
+        results.at(i) =
+            FormatChecker(styles[i]).checkFile(files[i], include_diff);
       }
     } catch (...) {
       const std::scoped_lock lock{error_mutex};
@@ -89,8 +91,8 @@ auto printWarning(std::ostream& os, std::string_view path,
 auto runFormatter(gsl::span<const std::filesystem::path> files,
                   gsl::span<const FormatStyle> styles, const RunConfig& run,
                   Streams streams) -> int {
-  if (run.check) {
-    const auto results = checkInParallel(files, styles);
+  if (run.check || run.diff) {
+    const auto results = checkInParallel(files, styles, run.diff);
     int failed = 0;
     for (size_t i = 0; i < files.size(); ++i) {
       const auto& result = results.at(i);
@@ -101,13 +103,24 @@ auto runFormatter(gsl::span<const std::filesystem::path> files,
         case CheckStatus::kClean:
           break;
         case CheckStatus::kDirty:
-          *streams.err << "Needs formatting: " << files[i].string() << "\n";
-          ++failed;
+          if (run.check) {
+            *streams.err << "Needs formatting: " << files[i].string() << "\n";
+            ++failed;
+          }
+          if (run.diff) {
+            *streams.out << result.diff;
+          }
           break;
         case CheckStatus::kUnreadable:
           *streams.err << "Error: cannot read " << files[i].string() << "\n";
           ++failed;
           break;
+      }
+    }
+    if (run.diff) {
+      streams.out->flush();
+      if (!*streams.out) {
+        throw std::runtime_error("Cannot write diff output");
       }
     }
     return failed;

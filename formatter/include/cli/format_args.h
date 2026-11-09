@@ -85,6 +85,7 @@ class FormatArgsBinder {
 
   std::optional<bool> inplace_;
   std::optional<bool> check_;
+  std::optional<bool> diff_;
   std::optional<std::string> config_path_;
 };
 

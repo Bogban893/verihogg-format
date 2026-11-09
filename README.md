@@ -115,6 +115,7 @@ docker run --rm -v "$(pwd)":/data -w /data \
 
 | Option                              | Description                                                    |
 | ----------------------------------- | -------------------------------------------------------------- |
+| `--diff` | Print a Git-style unified patch without modifying files; incompatible with `--inplace`. |
 | `--check`                         | Check formatting without writing files; incompatible with `--inplace`. |
 | `-n, --inplace`                     | Overwrite source files instead of printing to stdout.          |
 | `-c, --column_limit N`              | Maximum line length (default: `100`).                          |
@@ -184,7 +185,7 @@ formatter --no_compact_indexing_and_selections src/*.sv
 
 | Code | Meaning                                       |
 | ---- | --------------------------------------------- |
-| `0`  | Formatting complete, or all checked files match the style.               |
+| `0`  | Formatting or diff output complete, or all checked files match the style.               |
 | `1`  | Error, or a checked file needs formatting or cannot be read. |
 
 ---
@@ -247,6 +248,26 @@ style overrides for each file. It prints diagnostics to stderr, writes nothing
 to stdout, and exits with 0 when all files match or 1 when a file needs
 formatting or cannot be read. Formatter warnings are also reported. Files are
 checked in parallel; diagnostics follow the input file order.
+
+### Preview formatting changes
+
+```bash
+verihogg-format --diff file.sv
+verihogg-format --check --diff file.sv
+verihogg-format --diff file.sv > changes.patch
+verihogg-format --diff < file.sv
+```
+
+`--diff` prints a Git-style unified patch to stdout and never writes source
+files. Differences alone do not cause a nonzero exit code; add `--check` to
+return 1 when files need formatting. Read, formatting and output errors produce
+a nonzero exit code in either mode. Warnings and errors go to stderr.
+
+File labels are relative to the current working directory. Diff-only mode also
+accepts stdin, using the label `<stdin>` and the configuration resolved for
+stdin. `--check` still requires file arguments, including with `--diff`.
+`--diff` cannot be combined with `--inplace`. Patches from parallel checks are
+printed in input file order. Output is plain text, without terminal colors.
 
 ### Docker (recommended)
 

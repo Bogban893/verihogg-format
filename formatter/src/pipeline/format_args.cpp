@@ -67,6 +67,7 @@ Formatting options:
       --config <path>                  Load configuration from a YAML file
   -n, --inplace                        Overwrite source files instead of stdout
       --check                          Check formatting without rewriting files
+      --diff                           Print a unified patch without rewriting files
 
 The style options below are reserved and do not affect formatting yet.
 Line-wrap search currently always runs, regardless of --try_wrap_long_lines.
@@ -138,6 +139,9 @@ FormatArgsBinder::FormatArgsBinder() {
       "-n,--inplace", inplace_,
       "Overwrite the source files instead of outputting to stdout");
   app_.add_flag("--check", check_, "Check formatting without rewriting files")
+      ->excludes(inplace);
+  app_.add_flag("--diff", diff_,
+                "Print a unified patch without rewriting files")
       ->excludes(inplace);
 
   app_.add_option("--config", config_path_,
@@ -372,6 +376,9 @@ auto FormatArgsBinder::buildRunConfig() const -> RunConfig {
   }
   if (check_.has_value()) {
     run.check = *check_;
+  }
+  if (diff_.has_value()) {
+    run.diff = *diff_;
   }
   return run;
 }
