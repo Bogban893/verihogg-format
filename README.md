@@ -127,6 +127,7 @@ docker run --rm -v "$(pwd)":/data -w /data \
 
 | Option                              | Description                                                    |
 | ----------------------------------- | -------------------------------------------------------------- |
+| `--check`                           | Check without writing files; incompatible with `--inplace`.    |
 | `-n, --inplace`                     | Overwrite source files instead of printing to stdout.          |
 | `-c, --column_limit N`              | Maximum line length (default: `100`).                          |
 | `-i, --indentation_spaces N`        | Spaces per indent level (default: `2`).                        |
@@ -151,32 +152,32 @@ currently always runs the line-wrap search.
 Every option below mirrors a key of the configuration file. A value passed on
 the command line overrides the value stored from the configuration file.
 
-| Option                                       | Description                                                                                          |
-| -------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `--port_declarations_alignment MODE`         | Alignment of port direction, type, dimensions and name.                                              |
-| `--module_net_variable_alignment MODE`       | Alignment of net and variable declarations inside blocks.                                            |
-| `--assignment_statement_alignment MODE`      | Alignment of assignment statements.                                                                  |
-| `--formal_parameters_alignment MODE`         | Alignment of formal parameters in module, interface and class headers.                               |
-| `--named_parameter_alignment MODE`           | Alignment of named parameters in instantiations.                                                     |
-| `--named_port_alignment MODE`                | Alignment of named port connections.                                                                 |
-| `--parameter_declaration_alignment MODE`     | Alignment of parameter and localparam declarations in block bodies.                                  |
-| `--case_items_alignment MODE`                | Alignment of case item labels.                                                                       |
-| `--enum_assignment_statement_alignment MODE` | Alignment of enum elements with assignments.                                                         |
-| `--struct_union_members_alignment MODE`      | Alignment of struct and union members.                                                               |
-| `--class_member_variable_alignment MODE`     | Alignment of class member variables.                                                                 |
-| `--distribution_items_alignment MODE`        | Alignment of distribution items.                                                                     |
-| `--port_declarations_indentation MODE`       | Indentation of ports in a module or interface header.                                                |
-| `--formal_parameters_indentation MODE`       | Indentation of formal parameters in a header.                                                        |
-| `--named_parameter_indentation MODE`         | Indentation of named parameters in an instantiation.                                                 |
-| `--named_port_indentation MODE`              | Indentation of named ports in an instantiation.                                                      |
-| `--alignment_group_boundary RULE`            | Rule determining where an alignment group ends.                                                      |
-| `--port_declarations_right_align_packed_dimensions`   | Right-align packed dimensions in port declarations (default: `false`).                      |
-| `--port_declarations_right_align_unpacked_dimensions` | Right-align unpacked dimensions in port declarations (default: `false`).                    |
-| `--compact_indexing_and_selections`          | Use compact expressions inside indexes and selections (default: `true`).                             |
-| `--class_parameter_space`                    | Insert a space before `#` in parameterized class typedefs (default: `false`).                        |
-| `--expand_coverpoints`                       | Always expand coverpoints (default: `false`).                                                        |
-| `--try_wrap_long_lines`                      | Allow optimization-based wrapping of long lines (default: `false`).                                  |
-| `--wrap_end_else_clauses`                    | Place `end` and `else` clauses on separate lines (default: `false`).                                 |
+| Option                                                | Description                                                                   |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `--port_declarations_alignment MODE`                  | Alignment of port direction, type, dimensions and name.                       |
+| `--module_net_variable_alignment MODE`                | Alignment of net and variable declarations inside blocks.                     |
+| `--assignment_statement_alignment MODE`               | Alignment of assignment statements.                                           |
+| `--formal_parameters_alignment MODE`                  | Alignment of formal parameters in module, interface and class headers.        |
+| `--named_parameter_alignment MODE`                    | Alignment of named parameters in instantiations.                              |
+| `--named_port_alignment MODE`                         | Alignment of named port connections.                                          |
+| `--parameter_declaration_alignment MODE`              | Alignment of parameter and localparam declarations in block bodies.           |
+| `--case_items_alignment MODE`                         | Alignment of case item labels.                                                |
+| `--enum_assignment_statement_alignment MODE`          | Alignment of enum elements with assignments.                                  |
+| `--struct_union_members_alignment MODE`               | Alignment of struct and union members.                                        |
+| `--class_member_variable_alignment MODE`              | Alignment of class member variables.                                          |
+| `--distribution_items_alignment MODE`                 | Alignment of distribution items.                                              |
+| `--port_declarations_indentation MODE`                | Indentation of ports in a module or interface header.                         |
+| `--formal_parameters_indentation MODE`                | Indentation of formal parameters in a header.                                 |
+| `--named_parameter_indentation MODE`                  | Indentation of named parameters in an instantiation.                          |
+| `--named_port_indentation MODE`                       | Indentation of named ports in an instantiation.                               |
+| `--alignment_group_boundary RULE`                     | Rule determining where an alignment group ends.                               |
+| `--port_declarations_right_align_packed_dimensions`   | Right-align packed dimensions in port declarations (default: `false`).        |
+| `--port_declarations_right_align_unpacked_dimensions` | Right-align unpacked dimensions in port declarations (default: `false`).      |
+| `--compact_indexing_and_selections`                   | Use compact expressions inside indexes and selections (default: `true`).      |
+| `--class_parameter_space`                             | Insert a space before `#` in parameterized class typedefs (default: `false`). |
+| `--expand_coverpoints`                                | Always expand coverpoints (default: `false`).                                 |
+| `--try_wrap_long_lines`                               | Allow optimization-based wrapping of long lines (default: `false`).           |
+| `--wrap_end_else_clauses`                             | Place `end` and `else` clauses on separate lines (default: `false`).          |
 
 For an alignment option `MODE` is one of `align`, `flush-left`, `preserve` or
 `infer` (default: `infer`).
@@ -193,10 +194,10 @@ formatter --no_compact_indexing_and_selections src/*.sv
 
 ### Exit codes
 
-| Code | Meaning                                       |
-| ---- | --------------------------------------------- |
-| `0`  | Formatting complete, no errors.               |
-| `1`  | Invalid command-line argument, configuration file error or parse error. |
+| Code | Meaning                                                      |
+| ---- | ------------------------------------------------------------ |
+| `0`  | Formatting complete, or all checked files match the style.   |
+| `1`  | Error, or a checked file needs formatting or cannot be read. |
 
 ---
 
@@ -246,6 +247,18 @@ column_limit: 120
 ---
 
 ## Usage
+
+Check formatting without changing files:
+
+```bash
+verihogg-format --check file.sv
+```
+
+Check mode requires input files and uses the resolved configuration and CLI
+style overrides for each file. It prints diagnostics to stderr, writes nothing
+to stdout, and exits with 0 when all files match or 1 when a file needs
+formatting or cannot be read. Formatter warnings are also reported. Files are
+checked in parallel; diagnostics follow the input file order.
 
 ### Docker (recommended)
 
