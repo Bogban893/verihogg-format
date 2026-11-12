@@ -115,5 +115,10 @@ if(GTest_FOUND)
     target_compile_definitions(verihogg-tests PRIVATE SCR1_DIR="${SCR1_PATH}")
     include(GoogleTest)
     gtest_discover_tests(verihogg-tests DISCOVERY_MODE PRE_TEST)
+    add_test(NAME CheckCliInputErrors
+      COMMAND ${CMAKE_COMMAND}
+        -DFORMATTER=$<TARGET_FILE:verihogg-format>
+        -DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/check-cli-tests
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/formatter/tests/check_cli_test.cmake)
   endif()
 endif()

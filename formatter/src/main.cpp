@@ -44,11 +44,12 @@ auto main(int argc, char** argv) -> int {
             ? std::optional<std::filesystem::path>{*binder.configPath()}
             : std::nullopt);
     const format::RunConfig run = binder.buildRunConfig();
-    if (run.check && !driver.sourceLoader.getErrors().empty()) {
+    const bool input_errors =
+        run.check && !driver.sourceLoader.getErrors().empty();
+    if (input_errors) {
       for (const auto& error : driver.sourceLoader.getErrors()) {
         std::cerr << "Error: " << error << "\n";
       }
-      return 1;
     }
 
     auto applyOverrides = [&binder](format::FormatStyle style) {
@@ -63,7 +64,9 @@ auto main(int argc, char** argv) -> int {
     const auto& files = driver.sourceLoader.getFilePaths();
 
     if (run.check && files.empty()) {
-      std::cerr << "Error: --check requires input files\n";
+      if (!input_errors) {
+        std::cerr << "Error: --check requires input files\n";
+      }
       return 1;
     }
 
@@ -97,7 +100,7 @@ auto main(int argc, char** argv) -> int {
     }
     const int result = runFormatter(files, styles, run,
                                     {.out = &std::cout, .err = &std::cerr});
-    return run.check && result > 0 ? 1 : 0;
+    return run.check && (input_errors || result > 0) ? 1 : 0;
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
     return 1;
