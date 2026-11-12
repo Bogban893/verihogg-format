@@ -5,6 +5,7 @@
 #include <concepts>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,10 @@ struct UnwrappedLine {
   // Layout policies must not erase this provenance.
   bool is_fallback = false;
   PartitionPolicy partition_policy = PartitionPolicy::kAlwaysExpand;
+  // Index of the ':' that terminates a case-item label (set by
+  // TreeUnwrapper::parseCaseItem). Survives the label/begin merge because the
+  // merge moves the whole label line.
+  std::optional<size_t> case_label_colon = std::nullopt;
 
   auto map(std::invocable<Token&&> auto&& func) && -> UnwrappedLine<
       std::invoke_result_t<decltype(func), Token&&>> {
@@ -52,6 +57,7 @@ struct UnwrappedLine {
         .nesting_level = this->nesting_level,
         .is_fallback = this->is_fallback,
         .partition_policy = this->partition_policy,
+        .case_label_colon = this->case_label_colon,
     };
   }
 
@@ -72,6 +78,7 @@ struct UnwrappedLine {
         .nesting_level = this->nesting_level,
         .is_fallback = this->is_fallback,
         .partition_policy = this->partition_policy,
+        .case_label_colon = this->case_label_colon,
     };
   }
 };
