@@ -116,6 +116,8 @@ Lines beginning with `-` are original source; lines beginning with `+` are the f
 
 `--color=auto|always|never` controls diff highlighting. The default, `auto`, uses red for original lines, green for formatted lines, and cyan for hunk headers when stdout is a supported terminal. Output redirected to a file or pipe stays a plain patch. A nonempty `NO_COLOR` environment variable or `TERM=dumb` disables automatic color. `--color=always` forces ANSI colors even in pipes and overrides those environment settings; use `--color=never` to disable color explicitly. This option only affects diff output; diagnostics stay on stderr.
 
+In a one-line replacement, colored output additionally inverts the changed fragments so that added or removed spaces stand out. Spacing changes are highlighted separately around matching code, preserving tabs as written. For other text changes, the shared prefix and suffix stay unhighlighted. Changes involving multiple removed or added lines keep whole-line colors. These highlights only add terminal styles; plain patch output stays unchanged.
+
 ### Diagnostics and issue links
 
 Normal preview and in-place runs write a status line for each processed file to stderr. When there are formatter warnings, an end-of-run summary groups them by construct and file, shows occurrence counts, and points to the first relevant line **in the formatted output**. For example:
