@@ -144,6 +144,26 @@ TEST_F(FormatArgsTest, DiffFlagSetsRunConfig) {
   EXPECT_TRUE(run.diff);
   EXPECT_FALSE(run.check);
   EXPECT_FALSE(run.inplace);
+  EXPECT_EQ(run.color, format::ColorMode::kAuto);
+}
+
+TEST_F(FormatArgsTest, DiffColorCanBeForced) {
+  const auto [style, run] = buildStyle({"--diff", "--color=always"});
+  EXPECT_EQ(run.color, format::ColorMode::kAlways);
+}
+
+TEST_F(FormatArgsTest, DiffColorCanBeDisabled) {
+  const auto [style, run] = buildStyle({"--diff", "--color", "never"});
+  EXPECT_EQ(run.color, format::ColorMode::kNever);
+}
+
+TEST_F(FormatArgsTest, DiffColorCanBeAutomatic) {
+  const auto [style, run] = buildStyle({"--diff", "--color=auto"});
+  EXPECT_EQ(run.color, format::ColorMode::kAuto);
+}
+
+TEST_F(FormatArgsTest, InvalidDiffColorIsRejected) {
+  EXPECT_FALSE(parse({"--diff", "--color=invalid"}));
 }
 
 TEST_F(FormatArgsTest, DiffAndCheckCanBeCombined) {

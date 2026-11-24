@@ -1,6 +1,8 @@
 #include <slang/driver/Driver.h>
+#include <slang/util/OS.h>
 
 #include <cassert>
+#include <cstdio>
 #include <exception>
 #include <filesystem>
 #include <iostream>
@@ -15,9 +17,30 @@
 #include "config/config_loader.h"
 #include "data/lex_context.h"
 #include "formatter.h"
+#include "pipeline/diff_printer.h"
 #include "pipeline/runner.h"
 #include "pipeline/summary.h"
 #include "pipeline/unified_diff.h"
+
+namespace {
+
+auto diffColorsEnabled(format::ColorMode mode) -> bool {
+  if (mode == format::ColorMode::kNever) {
+    return false;
+  }
+  if (mode == format::ColorMode::kAlways) {
+    slang::OS::tryEnableColors();
+    return true;
+  }
+  if (!slang::OS::getEnv("NO_COLOR").empty() ||
+      slang::OS::getEnv("TERM") == "dumb") {
+    return false;
+  }
+  slang::OS::tryEnableColors();
+  return slang::OS::fileSupportsColors(stdout);
+}
+
+}  // namespace
 
 auto main(int argc, char** argv) -> int {
   try {
@@ -50,6 +73,7 @@ auto main(int argc, char** argv) -> int {
             ? std::optional<std::filesystem::path>{*binder.configPath()}
             : std::nullopt);
     const format::RunConfig run = binder.buildRunConfig();
+    const bool diff_color = run.diff && diffColorsEnabled(run.color);
     const bool input_errors =
         (run.check || run.diff) && !driver.sourceLoader.getErrors().empty();
     if (input_errors) {
@@ -96,8 +120,10 @@ auto main(int argc, char** argv) -> int {
       auto tokens = ctx.lex_string(source);
       auto result = format::format(tokens, style, ctx.source_text());
       if (run.diff) {
-        std::cout << format::makeUnifiedDiff(source, result.formatted_text,
-                                             run.stdin_name);
+        format::printDiff(std::cout,
+                          format::makeUnifiedDiff(source, result.formatted_text,
+                                                  run.stdin_name),
+                          diff_color);
         std::cout.flush();
         if (!std::cout) {
           throw std::runtime_error("Cannot write diff output");
@@ -136,8 +162,9 @@ auto main(int argc, char** argv) -> int {
     for (const auto& file : files) {
       styles.push_back(styleFor(file));
     }
-    const int result = runFormatter(files, styles, run,
-                                    {.out = &std::cout, .err = &std::cerr});
+    const int result = runFormatter(
+        files, styles, run,
+        {.out = &std::cout, .err = &std::cerr, .diff_color = diff_color});
     return (run.check || run.diff) && (input_errors || result > 0) ? 1 : 0;
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";

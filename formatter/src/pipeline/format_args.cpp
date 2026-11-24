@@ -69,6 +69,11 @@ Formatting options:
       --check                          Check formatting without rewriting files
       --no-links                       Omit GitHub issue links in the summary
       --diff                           Print a unified patch without rewriting files
+      --color <mode>                   Color --diff output: auto | always | never (default: auto)
+
+In --diff output, '-' marks original lines and '+' marks formatted lines.
+Auto color requires a supported terminal, TERM other than dumb, and no nonempty
+NO_COLOR environment variable. --color=always forces color, including in pipes.
 
 The style options below are reserved and do not affect formatting yet.
 Line-wrap search currently always runs, regardless of --try_wrap_long_lines.
@@ -106,7 +111,7 @@ Boolean options (use --no_<name> to disable):
       --try_wrap_long_lines
       --wrap_end_else_clauses
 
-Every option above mirrors a key of the YAML configuration file.
+Style options mirror keys of the YAML configuration file.
 )");
 }
 
@@ -144,6 +149,9 @@ FormatArgsBinder::FormatArgsBinder() {
   app_.add_flag("--diff", diff_,
                 "Print a unified patch without rewriting files")
       ->excludes(inplace);
+  app_.add_option("--color", color_,
+                  "Color --diff output: auto | always | never (default: auto)")
+      ->check(CLI::IsMember({"auto", "always", "never"}));
 
   app_.add_option("--config", config_path_,
                   "Load configuration from a YAML file");
@@ -384,6 +392,9 @@ auto FormatArgsBinder::buildRunConfig() const -> RunConfig {
   run.no_links = no_links_;
   if (diff_.has_value()) {
     run.diff = *diff_;
+  }
+  if (color_.has_value()) {
+    run.color = colorModeFromString(*color_);
   }
   return run;
 }

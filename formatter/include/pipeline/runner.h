@@ -8,8 +8,9 @@
 namespace format {
 
 struct Streams {
-  std::ostream* out;
-  std::ostream* err;
+  std::ostream* out = nullptr;
+  std::ostream* err = nullptr;
+  bool diff_color = false;
 };
 
 // Uses styles[i] for files[i]. Check and diff modes never write source files;

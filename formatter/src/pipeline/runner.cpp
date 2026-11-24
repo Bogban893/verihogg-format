@@ -19,6 +19,7 @@
 #include "data/format_warning.h"
 #include "data/lex_context.h"
 #include "formatter.h"
+#include "pipeline/diff_printer.h"
 #include "pipeline/format_checker.h"
 #include "pipeline/summary.h"
 
@@ -138,7 +139,7 @@ auto runFormatter(gsl::span<const std::filesystem::path> files,
             ++failed;
           }
           if (run.diff) {
-            *streams.out << result.diff;
+            printDiff(*streams.out, result.diff, streams.diff_color);
           }
           break;
         case CheckStatus::kUnreadable:

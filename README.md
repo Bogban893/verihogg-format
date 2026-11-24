@@ -110,6 +110,10 @@ verihogg-format --diff < rtl/alu.sv
 
 Patch paths are relative to the current directory; stdin uses `<stdin>`. Patches include three context lines, preserve line-ending bytes, and mark missing final newlines. Apply file patches from the same working directory, for example with `git apply changes.patch`. Paths outside that directory may require relocation before Git will apply them. Stdin works only with standalone `--diff`, since `--check` requires file paths.
 
+Lines beginning with `-` are original source; lines beginning with `+` are the formatted result. Lines beginning with a space are unchanged context. The `@@ -old,count +new,count @@` headers show line ranges before and after formatting.
+
+`--color=auto|always|never` controls diff highlighting. The default, `auto`, uses red for original lines, green for formatted lines, and cyan for hunk headers when stdout is a supported terminal. Output redirected to a file or pipe stays a plain patch. A nonempty `NO_COLOR` environment variable or `TERM=dumb` disables automatic color. `--color=always` forces ANSI colors even in pipes and overrides those environment settings; use `--color=never` to disable color explicitly. This option only affects diff output; diagnostics stay on stderr.
+
 ### Diagnostics and issue links
 
 Normal preview and in-place runs write a status line for each processed file to stderr. When there are formatter warnings, an end-of-run summary groups them by construct and file, shows occurrence counts, and points to the first relevant line **in the formatted output**. For example:
@@ -143,6 +147,7 @@ These options affect the current formatter:
 | `-n, --inplace` | off | Rewrite input files. |
 | `--check` | off | Check without rewriting input files. |
 | `--diff` | off | Print a unified patch without rewriting input files. |
+| `--color MODE` | `auto` | Highlight diff output: `auto`, `always`, or `never`. |
 | `--no-links` | off | Hide GitHub issue links in the diagnostic summary, including in `--check` and `--diff`. |
 | `--wrap_end_else_clauses` | off | Put a block-closing `end` and the following `else` on separate lines. |
 

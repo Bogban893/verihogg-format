@@ -125,5 +125,10 @@ if(GTest_FOUND)
         -DFORMATTER=$<TARGET_FILE:verihogg-format>
         -DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/check-cli-tests
         -P ${CMAKE_CURRENT_SOURCE_DIR}/formatter/tests/check_cli_test.cmake)
+    add_test(NAME DiffColorCli
+      COMMAND ${CMAKE_COMMAND}
+        -DFORMATTER=$<TARGET_FILE:verihogg-format>
+        -DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/diff-color-cli-tests
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/formatter/tests/diff_color_cli_test.cmake)
   endif()
 endif()

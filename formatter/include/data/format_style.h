@@ -99,11 +99,31 @@ enum class AlignmentGroupBoundary : uint8_t {
       std::string("Unknown alignment group boundary: ").append(s));
 }
 
+enum class ColorMode : uint8_t {
+  kAuto,
+  kAlways,
+  kNever,
+};
+
+[[nodiscard]] inline auto colorModeFromString(std::string_view s) -> ColorMode {
+  if (s == "auto") {
+    return ColorMode::kAuto;
+  }
+  if (s == "always") {
+    return ColorMode::kAlways;
+  }
+  if (s == "never") {
+    return ColorMode::kNever;
+  }
+  throw std::invalid_argument(std::string("Unknown --color: ").append(s));
+}
+
 struct RunConfig {
   bool inplace = false;
   bool check = false;
   bool no_links = false;
   bool diff = false;
+  ColorMode color = ColorMode::kAuto;
   std::string stdin_name = "<stdin>";
   std::vector<std::string> input_files{};
 };
