@@ -118,12 +118,33 @@ enum class ColorMode : uint8_t {
   throw std::invalid_argument(std::string("Unknown --color: ").append(s));
 }
 
+enum class HyperlinkMode : uint8_t {
+  kAuto,
+  kAlways,
+  kNever,
+};
+
+[[nodiscard]] inline auto hyperlinkModeFromString(std::string_view s)
+    -> HyperlinkMode {
+  if (s == "auto") {
+    return HyperlinkMode::kAuto;
+  }
+  if (s == "always") {
+    return HyperlinkMode::kAlways;
+  }
+  if (s == "never") {
+    return HyperlinkMode::kNever;
+  }
+  throw std::invalid_argument(std::string("Unknown --hyperlinks: ").append(s));
+}
+
 struct RunConfig {
   bool inplace = false;
   bool check = false;
   bool no_links = false;
   bool diff = false;
   ColorMode color = ColorMode::kAuto;
+  HyperlinkMode hyperlinks = HyperlinkMode::kAuto;
   size_t diff_context = 3;
   std::string stdin_name = "<stdin>";
   std::vector<std::string> input_files{};

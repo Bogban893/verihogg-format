@@ -146,6 +146,29 @@ TEST_F(FormatArgsTest, DiffFlagSetsRunConfig) {
   EXPECT_FALSE(run.inplace);
   EXPECT_EQ(run.color, format::ColorMode::kAuto);
   EXPECT_EQ(run.diff_context, 3U);
+  EXPECT_EQ(run.hyperlinks, format::HyperlinkMode::kAuto);
+}
+
+TEST_F(FormatArgsTest, DiffHyperlinksCanBeForcedIndependentlyOfOtherOutput) {
+  const auto [style, run] = buildStyle(
+      {"--diff", "--hyperlinks=always", "--color=never", "--no-links"});
+  EXPECT_EQ(run.hyperlinks, format::HyperlinkMode::kAlways);
+  EXPECT_EQ(run.color, format::ColorMode::kNever);
+  EXPECT_TRUE(run.no_links);
+}
+
+TEST_F(FormatArgsTest, DiffHyperlinksCanBeDisabled) {
+  const auto [style, run] = buildStyle({"--diff", "--hyperlinks", "never"});
+  EXPECT_EQ(run.hyperlinks, format::HyperlinkMode::kNever);
+}
+
+TEST_F(FormatArgsTest, DiffHyperlinksCanBeAutomatic) {
+  const auto [style, run] = buildStyle({"--diff", "--hyperlinks=auto"});
+  EXPECT_EQ(run.hyperlinks, format::HyperlinkMode::kAuto);
+}
+
+TEST_F(FormatArgsTest, InvalidDiffHyperlinkModeIsRejected) {
+  EXPECT_FALSE(parse({"--diff", "--hyperlinks=invalid"}));
 }
 
 TEST_F(FormatArgsTest, DiffContextCanBeDisabled) {

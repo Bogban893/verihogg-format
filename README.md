@@ -118,6 +118,10 @@ Lines beginning with `-` are original source; lines beginning with `+` are the f
 
 In a one-line replacement, colored output additionally inverts the changed fragments so that added or removed spaces stand out. Spacing changes are highlighted separately around matching code, preserving tabs as written. For other text changes, the shared prefix and suffix stay unhighlighted. Changes involving multiple removed or added lines keep whole-line colors. These highlights only add terminal styles; plain patch output stays unchanged.
 
+`--hyperlinks=auto|always|never` makes each diff hunk header an OSC 8 hyperlink to the original source file and the first changed line, skipping unchanged context. Pure insertions link to the preceding original line, or line 1 at the beginning of a file. Paths are absolute and URI-encoded; the line number is included as a `#number` fragment. Following the link and honoring its line number depend on your terminal's file handler: see [iTerm2](https://iterm2.com/documentation-escape-codes.html#anchor-osc-8), [Kitty](https://sw.kovidgoyal.net/kitty/open_actions/), or the [WezTerm configuration recipe](https://wezterm.org/recipes/hyperlinks.html).
+
+The default, `auto`, enables hyperlinks only when stdout is a terminal recognized as iTerm2, Kitty, or WezTerm. It leaves redirected output, `TERM=dumb`, unrecognized terminals, SSH sessions, tmux, and screen without hyperlinks. Use `always` to force OSC 8 output when your terminal or multiplexer is configured to handle it, or `never` to disable it. Stdin has no file target and never gets hyperlinks. This setting is independent of `--color`, `NO_COLOR`, and `--no-links`; `--no-links` controls the GitHub issue links in the diagnostic summary.
+
 ### Diagnostics and issue links
 
 Normal preview and in-place runs write a status line for each processed file to stderr. When there are formatter warnings, an end-of-run summary groups them by construct and file, shows occurrence counts, and points to the first relevant line **in the formatted output**. For example:
@@ -152,6 +156,7 @@ These options affect the current formatter:
 | `--check` | off | Check without rewriting input files. |
 | `--diff` | off | Print a unified patch without rewriting input files. |
 | `--color MODE` | `auto` | Highlight diff output: `auto`, `always`, or `never`. |
+| `--hyperlinks MODE` | `auto` | Link diff hunk headers to original source lines: `auto`, `always`, or `never`. |
 | `-U, --diff-context N` | `3` | Unchanged lines before and after each diff hunk; `0` omits context. |
 | `--no-links` | off | Hide GitHub issue links in the diagnostic summary, including in `--check` and `--diff`. |
 | `--wrap_end_else_clauses` | off | Put a block-closing `end` and the following `else` on separate lines. |

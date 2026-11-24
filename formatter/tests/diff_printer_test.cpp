@@ -15,7 +15,7 @@ namespace {
 
 auto printed(std::string_view patch, bool color = true) -> std::string {
   std::ostringstream out;
-  format::printDiff(out, patch, color);
+  format::printDiff(out, patch, {.color = color});
   return out.str();
 }
 

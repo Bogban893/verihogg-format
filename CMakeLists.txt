@@ -135,5 +135,10 @@ if(GTest_FOUND)
         -DFORMATTER=$<TARGET_FILE:verihogg-format>
         -DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/diff-context-cli-tests
         -P ${CMAKE_CURRENT_SOURCE_DIR}/formatter/tests/diff_context_cli_test.cmake)
+    add_test(NAME DiffHyperlinksCli
+      COMMAND ${CMAKE_COMMAND}
+        -DFORMATTER=$<TARGET_FILE:verihogg-format>
+        -DTEST_ROOT=${CMAKE_CURRENT_BINARY_DIR}/diff-hyperlinks-cli-tests
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/formatter/tests/diff_hyperlinks_cli_test.cmake)
   endif()
 endif()

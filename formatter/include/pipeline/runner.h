@@ -11,6 +11,7 @@ struct Streams {
   std::ostream* out = nullptr;
   std::ostream* err = nullptr;
   bool diff_color = false;
+  bool diff_hyperlinks = false;
 };
 
 // Uses styles[i] for files[i]. Check and diff modes never write source files;

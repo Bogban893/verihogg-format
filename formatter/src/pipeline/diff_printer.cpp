@@ -1,8 +1,14 @@
 #include "pipeline/diff_printer.h"
 
+#include <charconv>
 #include <cstddef>
+#include <filesystem>
+#include <limits>
+#include <optional>
 #include <ostream>
+#include <string>
 #include <string_view>
+#include <system_error>
 #include <vector>
 
 namespace format {
@@ -45,6 +51,86 @@ auto takeLine(std::string_view& patch) -> PatchLine {
     }
   }
   return {line, ending};
+}
+
+auto parseLineNumber(std::string_view text) -> std::optional<size_t> {
+  size_t number = 0;
+  const auto result = std::from_chars(text.begin(), text.end(), number);
+  if (result.ec != std::errc{} || result.ptr != text.end()) {
+    return std::nullopt;
+  }
+  return number;
+}
+
+auto firstChangedLine(const PatchLine& header, std::string_view body)
+    -> std::optional<size_t> {
+  if (!header.text.starts_with("@@ -")) {
+    return std::nullopt;
+  }
+  const auto end = header.text.find(' ', 4);
+  if (end == std::string_view::npos) {
+    return std::nullopt;
+  }
+  const auto range = header.text.substr(4, end - 4);
+  const auto comma = range.find(',');
+  auto line = parseLineNumber(range.substr(0, comma));
+  const auto count = comma == std::string_view::npos
+                         ? std::optional<size_t>{1}
+                         : parseLineNumber(range.substr(comma + 1));
+  if (!line || !count) {
+    return std::nullopt;
+  }
+  if (*count == 0) {
+    if (*line == std::numeric_limits<size_t>::max()) {
+      return std::nullopt;
+    }
+    ++*line;
+  }
+  while (!body.empty()) {
+    const auto next = takeLine(body);
+    if (next.text.starts_with('-')) {
+      return *line == 0 ? 1 : *line;
+    }
+    if (next.text.starts_with('+')) {
+      return *line > 1 ? *line - 1 : 1;
+    }
+    if (!next.text.starts_with(' ') ||
+        *line == std::numeric_limits<size_t>::max()) {
+      break;
+    }
+    ++*line;
+  }
+  return std::nullopt;
+}
+
+auto makeFileUri(const std::filesystem::path& path) -> std::string {
+  std::error_code error;
+  auto absolute = std::filesystem::canonical(path, error);
+  if (error) {
+    absolute = std::filesystem::absolute(path);
+  }
+  const auto name = absolute.generic_string();
+  // UNC paths already include an authority; drive-letter paths need a slash.
+  std::string uri = name.starts_with("//") ? "file:" : "file://";
+  if (!name.starts_with('/')) {
+    uri += '/';
+  }
+  constexpr std::string_view kHex = "0123456789ABCDEF";
+  constexpr unsigned int kNibbleBits = 4;
+  constexpr unsigned int kNibbleMask = 0xf;
+  for (const char ch : name) {
+    const auto byte = static_cast<unsigned char>(ch);
+    if ((byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
+        (byte >= '0' && byte <= '9') || ch == '-' || ch == '.' || ch == '_' ||
+        ch == '~' || ch == '/' || ch == ':') {
+      uri += ch;
+    } else {
+      uri += '%';
+      uri += kHex.at(byte >> kNibbleBits);
+      uri += kHex.at(byte & kNibbleMask);
+    }
+  }
+  return uri;
 }
 
 auto spaceEnd(std::string_view text, size_t pos) -> size_t {
@@ -189,23 +275,31 @@ auto printReplacement(std::ostream& out, const PatchLine& removed,
 
 }  // namespace
 
-auto printDiff(std::ostream& out, std::string_view patch, bool color) -> void {
-  if (!color) {
+auto printDiff(std::ostream& out, std::string_view patch,
+               const DiffPrintOptions& options) -> void {
+  if (patch.empty()) {
+    return;
+  }
+  if (!options.color && (!options.hyperlinks || options.source_path.empty())) {
     out << patch;
     return;
   }
 
+  const auto file_uri = options.hyperlinks && !options.source_path.empty()
+                            ? makeFileUri(options.source_path)
+                            : std::string{};
   bool in_hunk = false;
   bool in_change = false;
   while (!patch.empty()) {
     const auto line = takeLine(patch);
-    if (in_hunk && !in_change && line.text.starts_with('-') &&
+    if (options.color && in_hunk && !in_change && line.text.starts_with('-') &&
         printReplacement(out, line, patch)) {
       in_change = true;
       continue;
     }
 
     std::string_view prefix;
+    std::optional<size_t> target;
     if (line.text.starts_with("diff --git ")) {
       in_hunk = false;
       in_change = false;
@@ -213,6 +307,9 @@ auto printDiff(std::ostream& out, std::string_view patch, bool color) -> void {
     if (line.text.starts_with("@@ ")) {
       in_hunk = true;
       prefix = "\033[36m";
+      if (!file_uri.empty()) {
+        target = firstChangedLine(line, patch);
+      }
     } else if (!in_hunk) {
       prefix = "\033[1m";
     } else if (line.text.starts_with('-')) {
@@ -224,10 +321,16 @@ auto printDiff(std::ostream& out, std::string_view patch, bool color) -> void {
       in_change = line.text.starts_with('-') || line.text.starts_with('+');
     }
 
-    if (prefix.empty()) {
+    if (target) {
+      out << "\033]8;;" << file_uri << '#' << *target << "\033\\";
+    }
+    if (!options.color || prefix.empty()) {
       out << line.text;
     } else {
       out << prefix << line.text << "\033[0m";
+    }
+    if (target) {
+      out << "\033]8;;\033\\";
     }
     out << line.ending;
   }

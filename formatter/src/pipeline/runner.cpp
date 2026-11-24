@@ -140,7 +140,10 @@ auto runFormatter(gsl::span<const std::filesystem::path> files,
             ++failed;
           }
           if (run.diff) {
-            printDiff(*streams.out, result.diff, streams.diff_color);
+            printDiff(*streams.out, result.diff,
+                      {.color = streams.diff_color,
+                       .hyperlinks = streams.diff_hyperlinks,
+                       .source_path = files[i]});
           }
           break;
         case CheckStatus::kUnreadable:

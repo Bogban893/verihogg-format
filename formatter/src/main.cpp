@@ -40,6 +40,31 @@ auto diffColorsEnabled(format::ColorMode mode) -> bool {
   return slang::OS::fileSupportsColors(stdout);
 }
 
+auto diffHyperlinksEnabled(format::HyperlinkMode mode) -> bool {
+  if (mode == format::HyperlinkMode::kNever) {
+    return false;
+  }
+  if (mode == format::HyperlinkMode::kAlways) {
+    slang::OS::tryEnableColors();
+    return true;
+  }
+  const auto term = slang::OS::getEnv("TERM");
+  if (term == "dumb" || !slang::OS::getEnv("TMUX").empty() ||
+      !slang::OS::getEnv("STY").empty() ||
+      !slang::OS::getEnv("SSH_CONNECTION").empty()) {
+    return false;
+  }
+  const auto program = slang::OS::getEnv("TERM_PROGRAM");
+  const bool supported = program == "iTerm.app" || program == "WezTerm" ||
+                         term == "xterm-kitty" ||
+                         !slang::OS::getEnv("KITTY_WINDOW_ID").empty();
+  if (!supported) {
+    return false;
+  }
+  slang::OS::tryEnableColors();
+  return slang::OS::fileSupportsColors(stdout);
+}
+
 }  // namespace
 
 auto main(int argc, char** argv) -> int {
@@ -74,6 +99,8 @@ auto main(int argc, char** argv) -> int {
             : std::nullopt);
     const format::RunConfig run = binder.buildRunConfig();
     const bool diff_color = run.diff && diffColorsEnabled(run.color);
+    const bool diff_hyperlinks = run.diff && !binder.files().empty() &&
+                                 diffHyperlinksEnabled(run.hyperlinks);
     const bool input_errors =
         (run.check || run.diff) && !driver.sourceLoader.getErrors().empty();
     if (input_errors) {
@@ -124,7 +151,7 @@ auto main(int argc, char** argv) -> int {
             std::cout,
             format::makeUnifiedDiff(source, result.formatted_text,
                                     run.stdin_name, run.diff_context),
-            diff_color);
+            {.color = diff_color});
         std::cout.flush();
         if (!std::cout) {
           throw std::runtime_error("Cannot write diff output");
@@ -163,9 +190,11 @@ auto main(int argc, char** argv) -> int {
     for (const auto& file : files) {
       styles.push_back(styleFor(file));
     }
-    const int result = runFormatter(
-        files, styles, run,
-        {.out = &std::cout, .err = &std::cerr, .diff_color = diff_color});
+    const int result = runFormatter(files, styles, run,
+                                    {.out = &std::cout,
+                                     .err = &std::cerr,
+                                     .diff_color = diff_color,
+                                     .diff_hyperlinks = diff_hyperlinks});
     return (run.check || run.diff) && (input_errors || result > 0) ? 1 : 0;
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
