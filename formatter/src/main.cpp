@@ -13,6 +13,12 @@
 #include <string_view>
 #include <vector>
 
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
 #include "cli/format_args.h"
 #include "config/config_loader.h"
 #include "data/lex_context.h"
@@ -48,21 +54,15 @@ auto diffHyperlinksEnabled(format::HyperlinkMode mode) -> bool {
     slang::OS::tryEnableColors();
     return true;
   }
-  const auto term = slang::OS::getEnv("TERM");
-  if (term == "dumb" || !slang::OS::getEnv("TMUX").empty() ||
-      !slang::OS::getEnv("STY").empty() ||
-      !slang::OS::getEnv("SSH_CONNECTION").empty()) {
-    return false;
-  }
-  const auto program = slang::OS::getEnv("TERM_PROGRAM");
-  const bool supported = program == "iTerm.app" || program == "WezTerm" ||
-                         term == "xterm-kitty" ||
-                         !slang::OS::getEnv("KITTY_WINDOW_ID").empty();
-  if (!supported) {
+  if (slang::OS::getEnv("TERM") == "dumb") {
     return false;
   }
   slang::OS::tryEnableColors();
-  return slang::OS::fileSupportsColors(stdout);
+#ifdef _WIN32
+  return _isatty(_fileno(stdout)) != 0;
+#else
+  return isatty(fileno(stdout)) != 0;
+#endif
 }
 
 }  // namespace

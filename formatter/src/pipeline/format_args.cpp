@@ -77,8 +77,8 @@ In --diff output, '-' marks original lines and '+' marks formatted lines.
 Auto color requires a supported terminal, TERM other than dumb, and no nonempty
 NO_COLOR environment variable. --color=always forces color, including in pipes.
 Hyperlinks are independent of color and --no-links. Auto hyperlinks require
-stdout to be a terminal recognized as iTerm2, Kitty, or WezTerm. Stdin has no
-source file to link. --hyperlinks=always emits links even in redirected output.
+stdout to be a terminal and TERM other than dumb. Stdin has no source file to
+link. --hyperlinks=always emits links even in redirected output.
 
 The style options below are reserved and do not affect formatting yet.
 Line-wrap search currently always runs, regardless of --try_wrap_long_lines.

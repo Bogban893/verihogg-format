@@ -10,6 +10,7 @@ file(WRITE "${test_dir}/clean.sv" "module m;\nendmodule\n")
 file(WRITE "${test_dir}/config.yaml" "version: \"0.1.0\"\n")
 string(ASCII 27 escape)
 set(color_mode never)
+set(terminal_program unknown)
 
 function(without_hyperlinks result text)
   string(FIND "${text}" "${escape}]8;;" start)
@@ -29,9 +30,9 @@ function(without_hyperlinks result text)
 endfunction()
 
 function(diff_output mode expected_status)
-  # Even a recognized terminal must not enable automatic links in a pipe.
+  # Terminal environment variables must not enable automatic links in a pipe.
   execute_process(
-    COMMAND "${CMAKE_COMMAND}" -E env TERM_PROGRAM=WezTerm TERM=xterm
+    COMMAND "${CMAKE_COMMAND}" -E env "TERM_PROGRAM=${terminal_program}" TERM=xterm
       TMUX= STY= SSH_CONNECTION= NO_COLOR=1
       "${FORMATTER}" --diff "--color=${color_mode}" "--hyperlinks=${mode}"
       --config "${test_dir}/config.yaml" ${ARGN}
@@ -55,10 +56,12 @@ endfunction()
 set(inputs "space #%.sv" second.sv)
 diff_output(never 0 ${inputs})
 set(plain "${last_output}")
-diff_output(auto 0 ${inputs})
-if(NOT "${last_output}" STREQUAL "${plain}")
-  message(FATAL_ERROR "Automatic hyperlinks changed captured output")
-endif()
+foreach(terminal_program IN ITEMS unknown vscode WezTerm)
+  diff_output(auto 0 ${inputs})
+  if(NOT "${last_output}" STREQUAL "${plain}")
+    message(FATAL_ERROR "Automatic hyperlinks changed captured output with TERM_PROGRAM=${terminal_program}")
+  endif()
+endforeach()
 diff_output(always 0 ${inputs})
 set(linked "${last_output}")
 string(FIND "${linked}" "/space%20%23%25.sv#4${escape}\\@@" first_target)
