@@ -70,6 +70,7 @@ Formatting options:
       --no-links                       Omit GitHub issue links in the summary
       --diff                           Print a unified patch without rewriting files
       --color <mode>                   Color --diff output: auto | always | never (default: auto)
+  -U, --diff-context <N>               Unchanged lines around each diff hunk (default: 3; 0 disables context)
 
 In --diff output, '-' marks original lines and '+' marks formatted lines.
 Auto color requires a supported terminal, TERM other than dumb, and no nonempty
@@ -152,6 +153,9 @@ FormatArgsBinder::FormatArgsBinder() {
   app_.add_option("--color", color_,
                   "Color --diff output: auto | always | never (default: auto)")
       ->check(CLI::IsMember({"auto", "always", "never"}));
+  app_.add_option("-U,--diff-context", diff_context_,
+                  "Unchanged lines around each diff hunk (default: 3)")
+      ->check(CLI::NonNegativeNumber);
 
   app_.add_option("--config", config_path_,
                   "Load configuration from a YAML file");
@@ -395,6 +399,9 @@ auto FormatArgsBinder::buildRunConfig() const -> RunConfig {
   }
   if (color_.has_value()) {
     run.color = colorModeFromString(*color_);
+  }
+  if (diff_context_.has_value()) {
+    run.diff_context = *diff_context_;
   }
   return run;
 }

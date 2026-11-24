@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -28,9 +29,11 @@ class FormatChecker {
  public:
   explicit FormatChecker(const FormatStyle& style) : style_{style} {}
 
-  // include_diff generates a patch for dirty files, labeled relative to cwd.
+  // include_diff generates a patch for dirty files, labeled relative to cwd,
+  // with up to context_lines unchanged lines before and after each change.
   [[nodiscard]] auto checkFile(const std::filesystem::path& path,
-                               bool include_diff = false) const -> CheckResult;
+                               bool include_diff = false,
+                               size_t context_lines = 3) const -> CheckResult;
 
  private:
   FormatStyle style_;

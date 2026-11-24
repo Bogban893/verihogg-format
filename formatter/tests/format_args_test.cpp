@@ -145,6 +145,48 @@ TEST_F(FormatArgsTest, DiffFlagSetsRunConfig) {
   EXPECT_FALSE(run.check);
   EXPECT_FALSE(run.inplace);
   EXPECT_EQ(run.color, format::ColorMode::kAuto);
+  EXPECT_EQ(run.diff_context, 3U);
+}
+
+TEST_F(FormatArgsTest, DiffContextCanBeDisabled) {
+  const auto [style, run] = buildStyle({"--diff", "--diff-context=0"});
+  EXPECT_EQ(run.diff_context, 0U);
+}
+
+TEST_F(FormatArgsTest, DiffContextCanBeIncreased) {
+  const auto [style, run] = buildStyle({"--diff", "--diff-context", "5"});
+  EXPECT_EQ(run.diff_context, 5U);
+}
+
+TEST_F(FormatArgsTest, DiffContextShortOptionAcceptsSeparateValue) {
+  const auto [style, run] = buildStyle({"--diff", "-U", "1"});
+  EXPECT_EQ(run.diff_context, 1U);
+}
+
+TEST_F(FormatArgsTest, DiffContextShortOptionAcceptsAttachedValue) {
+  const auto [style, run] = buildStyle({"--diff", "--check", "-U5"});
+  EXPECT_EQ(run.diff_context, 5U);
+  EXPECT_TRUE(run.check);
+}
+
+TEST_F(FormatArgsTest, NegativeDiffContextIsRejected) {
+  EXPECT_FALSE(parse({"--diff", "--diff-context=-1"}));
+}
+
+TEST_F(FormatArgsTest, NonNumericDiffContextIsRejected) {
+  EXPECT_FALSE(parse({"--diff", "-U", "invalid"}));
+}
+
+TEST_F(FormatArgsTest, FractionalDiffContextIsRejected) {
+  EXPECT_FALSE(parse({"--diff", "--diff-context=1.5"}));
+}
+
+TEST_F(FormatArgsTest, OverflowingDiffContextIsRejected) {
+  EXPECT_FALSE(parse({"--diff", "--diff-context=18446744073709551616"}));
+}
+
+TEST_F(FormatArgsTest, MissingDiffContextIsRejected) {
+  EXPECT_FALSE(parse({"--diff", "-U"}));
 }
 
 TEST_F(FormatArgsTest, DiffColorCanBeForced) {

@@ -87,6 +87,7 @@ class FormatArgsBinder {
   std::optional<bool> check_;
   std::optional<bool> diff_;
   std::optional<std::string> color_;
+  std::optional<size_t> diff_context_;
   std::optional<std::string> config_path_;
   bool no_links_ = false;
 };

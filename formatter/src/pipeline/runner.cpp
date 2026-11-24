@@ -39,8 +39,8 @@ auto writeFile(const std::filesystem::path& path, std::string_view content)
 // Workers only write their own result slot; diagnostics are emitted after
 // joining so their order follows the input files rather than scheduling.
 auto checkInParallel(gsl::span<const std::filesystem::path> files,
-                     gsl::span<const FormatStyle> styles, bool include_diff)
-    -> std::vector<CheckResult> {
+                     gsl::span<const FormatStyle> styles, bool include_diff,
+                     size_t context_lines) -> std::vector<CheckResult> {
   std::vector<CheckResult> results(files.size());
   std::atomic<size_t> next{0};
   std::atomic<bool> stop{false};
@@ -54,8 +54,8 @@ auto checkInParallel(gsl::span<const std::filesystem::path> files,
         if (i >= files.size()) {
           break;
         }
-        results.at(i) =
-            FormatChecker(styles[i]).checkFile(files[i], include_diff);
+        results.at(i) = FormatChecker(styles[i]).checkFile(
+            files[i], include_diff, context_lines);
       }
     } catch (...) {
       const std::scoped_lock lock{error_mutex};
@@ -120,7 +120,8 @@ auto runFormatter(gsl::span<const std::filesystem::path> files,
                   gsl::span<const FormatStyle> styles, const RunConfig& run,
                   Streams streams) -> int {
   if (run.check || run.diff) {
-    const auto results = checkInParallel(files, styles, run.diff);
+    const auto results =
+        checkInParallel(files, styles, run.diff, run.diff_context);
     int failed = 0;
     bool has_warnings = false;
     std::vector<summary::FileReport> reports;

@@ -120,10 +120,11 @@ auto main(int argc, char** argv) -> int {
       auto tokens = ctx.lex_string(source);
       auto result = format::format(tokens, style, ctx.source_text());
       if (run.diff) {
-        format::printDiff(std::cout,
-                          format::makeUnifiedDiff(source, result.formatted_text,
-                                                  run.stdin_name),
-                          diff_color);
+        format::printDiff(
+            std::cout,
+            format::makeUnifiedDiff(source, result.formatted_text,
+                                    run.stdin_name, run.diff_context),
+            diff_color);
         std::cout.flush();
         if (!std::cout) {
           throw std::runtime_error("Cannot write diff output");

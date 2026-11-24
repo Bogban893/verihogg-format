@@ -108,7 +108,9 @@ verihogg-format --diff < rtl/alu.sv
 
 `--diff` prints only a Git-style unified patch to stdout and never writes source files. Differences alone return **0**; add `--check` to return **1** when files need formatting. Read, formatting, and output errors return **1**. A clean file produces no patch. Files are compared in parallel, with patches and diagnostics emitted in input order using each file's resolved configuration and CLI overrides.
 
-Patch paths are relative to the current directory; stdin uses `<stdin>`. Patches include three context lines, preserve line-ending bytes, and mark missing final newlines. Apply file patches from the same working directory, for example with `git apply changes.patch`. Paths outside that directory may require relocation before Git will apply them. Stdin works only with standalone `--diff`, since `--check` requires file paths.
+Patch paths are relative to the current directory; stdin uses `<stdin>`. Patches include up to three unchanged lines before and after each change by default, preserve line-ending bytes, and mark missing final newlines. Apply file patches from the same working directory, for example with `git apply changes.patch`. Paths outside that directory may require relocation before Git will apply them. Stdin works only with standalone `--diff`, since `--check` requires file paths.
+
+Use `--diff-context N` or `-U N` to choose a nonnegative number of context lines. For example, `--diff -U0` shows only changes, while `--diff -U5` shows up to five surrounding lines on each side. This option works with files, stdin, and `--check --diff`, and only affects diff output. When applying a patch generated with zero context, use `git apply --unidiff-zero changes.patch`.
 
 Lines beginning with `-` are original source; lines beginning with `+` are the formatted result. Lines beginning with a space are unchanged context. The `@@ -old,count +new,count @@` headers show line ranges before and after formatting.
 
@@ -148,6 +150,7 @@ These options affect the current formatter:
 | `--check` | off | Check without rewriting input files. |
 | `--diff` | off | Print a unified patch without rewriting input files. |
 | `--color MODE` | `auto` | Highlight diff output: `auto`, `always`, or `never`. |
+| `-U, --diff-context N` | `3` | Unchanged lines before and after each diff hunk; `0` omits context. |
 | `--no-links` | off | Hide GitHub issue links in the diagnostic summary, including in `--check` and `--diff`. |
 | `--wrap_end_else_clauses` | off | Put a block-closing `end` and the following `else` on separate lines. |
 

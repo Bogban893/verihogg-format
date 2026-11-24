@@ -124,6 +124,7 @@ struct RunConfig {
   bool no_links = false;
   bool diff = false;
   ColorMode color = ColorMode::kAuto;
+  size_t diff_context = 3;
   std::string stdin_name = "<stdin>";
   std::vector<std::string> input_files{};
 };
